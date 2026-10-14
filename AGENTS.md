@@ -177,9 +177,11 @@ al modelo real del §3. No hay que rearmar nada más.
 6. ✅ **Hecha:** Gerente IA + reuniones mensuales + crecimiento a 10 técnicos.
 7. ✅ **Hecha:** Pantalla del dueño (KPIs, sliders, lead en vivo texto, mapa animado, métricas AMD).
 8. ✅ **Hecha:** Simulación por meses (6 solos + 3 a mano, con guardado en SQLite).
-9. 🟡 **EN CURSO →** Docker (Dockerfile + docker-compose ✅), README que corra ✅,
-   **faltan:** deploy Render + Netlify, video (voz clonada, fallback a voz real),
-   pitch en inglés con subtítulos, subir a GitHub (renombrar `master` → `main`).
+9. 🟡 **EN CURSO →** Docker ✅ (**verificado de punta a punta**: `docker compose up --build`
+   arranca backend + frontend y la API responde), README que corra ✅, **guion del video/pitch
+   en inglés ✅ `PITCH.md`**. **Faltan:** deploy Render + Netlify (necesita cuentas del autor),
+   grabar el video, y subir a GitHub (rama ya renombrada `master` → `main`).
+   **Pendiente del autor:** catálogo de modelos de TokenFactory + login de `gh`.
 
 **Recorte de emergencia si falta tiempo:** primero el mapa animado, luego extras. NUNCA recortar
 AMD, el envío ni el README.
