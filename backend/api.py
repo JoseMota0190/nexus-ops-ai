@@ -217,3 +217,44 @@ def llamada_en_vivo() -> dict:
 def objetivos() -> list[dict]:
     return [{"mes": m, "ventas_por_dia": round(ventas_objetivo_del_mes(m), 1),
              "tecnicos": tecnicos_objetivo_del_mes(m)} for m in range(1, MESES_TOTALES + 1)]
+
+
+class Escenario(BaseModel):
+    operadores: int = 3
+    tecnicos: int = 2
+    mejoras: int = 0
+
+
+@app.post("/api/escenario")
+def escenario(e: Escenario) -> dict:
+    """'¿Qué pasa si…?' — el dueño mueve las palancas y el programa calcula el resultado.
+
+    No toca la simulación: es una cuenta al aire (la planilla de Excel del dueño).
+    """
+    from engine.business import (
+        Empresa, MANTENIMIENTO_ANUAL, MONITOREO_PROMEDIO, SALARIO_OPERADOR_MES,
+        SALARIO_TECNICO_MES, DIAS_POR_SEMANA, SEMANAS_POR_MES,
+    )
+    prob = Empresa(operadores=max(1, e.operadores), tecnicos=max(1, e.tecnicos),
+                   mejoras=max(0, e.mejoras))
+    ventas = ventas_potenciales(prob)
+    capacidad = prob.capacidad_instalaciones
+    dias = SEMANAS_POR_MES * DIAS_POR_SEMANA
+    ingreso_inst = round(ventas * dias * 298.0, 2)      # ticket promedio de instalación
+    ingreso_rec = round(prob.clientes_activos * (MONITOREO_PROMEDIO + MANTENIMIENTO_ANUAL / 12), 2)
+    costo = round(prob.operadores * SALARIO_OPERADOR_MES
+                  + prob.tecnicos * SALARIO_TECNICO_MES
+                  + prob.leads_por_dia * 1.2 * dias, 2)
+    return {
+        "ventas_por_dia": round(ventas, 1),
+        "capacidad_instalaciones": capacidad,
+        "sobra_capacidad": max(0, capacidad - round(ventas, 0)),
+        "falta_capacidad": max(0, round(ventas, 0) - capacidad),
+        "ingresos_mes": round(ingreso_inst + ingreso_rec, 2),
+        "costos_mes": costo,
+        "balance_mes": round(ingreso_inst + ingreso_rec - costo, 2),
+        "tasa_respuesta": round(100 * prob.tasa_respuesta, 1),
+        "tasa_cierre": round(100 * prob.tasa_cierre, 1),
+        "leads_por_dia": prob.leads_por_dia,
+        "meta_cumplida": prob.tecnicos >= 10,
+    }

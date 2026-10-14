@@ -28,13 +28,16 @@ from schemas import DecisionGerente, ReunionGerente
 from .agenda import nombres_para_alta
 from .business import (
     COSTO_POR_MEJORA as _COSTO_MEJORA,
+    DIAS_POR_SEMANA,
     META_MES,
     META_TECNICOS,
     SALARIO_OPERADOR_MES,
     SALARIO_TECNICO_MES,
+    SEMANAS_POR_MES,
     Empresa,
     tasa_cierre,
     tasa_respuesta,
+    tecnicos_necesarios,
 )
 
 MAX_MEJORAS = 5
@@ -88,8 +91,28 @@ class Veredicto:
     motivo: str
 
 
+def ventas_reales_promedio(store) -> float:
+    """Ventas/día del último mes cerrado (datos reales, no el plan)."""
+    row = store.conn.execute(
+        "SELECT ventas FROM resumen_mes ORDER BY mes DESC LIMIT 1").fetchone()
+    if row is None:
+        return 6.0
+    return float(row["ventas"]) / (SEMANAS_POR_MES * DIAS_POR_SEMANA)
+
+
+def tope_tecnicos(store, mes: int) -> int:
+    """Hasta cuántos técnicos se puede contratar este mes.
+
+    Regla de negocio (no es un guion): no se contrata por delante de lo que la
+    venta justifica. Se mira el objetivo del plan Y lo que realmente se vendió.
+    """
+    objetivo = tecnicos_objetivo_del_mes(mes)
+    por_realidad = tecnicos_necesarios(ventas_reales_promedio(store)) + 1
+    return min(META_TECNICOS, max(objetivo, por_realidad))
+
+
 def validar_decision(d: DecisionGerente, empresa: Empresa, caja: float,
-                     mes: int) -> Veredicto:
+                     mes: int, tope: int | None = None) -> Veredicto:
     if d.cantidad <= 0:
         return Veredicto(False, "El Gerente no propuso ninguna acción concreta.")
 
@@ -104,11 +127,11 @@ def validar_decision(d: DecisionGerente, empresa: Empresa, caja: float,
 
     if d.palanca.value == "contratar_tecnicos":
         n = empresa.tecnicos + d.cantidad
-        tope = tecnicos_objetivo_del_mes(mes)
-        if n > tope:
+        limite = tecnicos_objetivo_del_mes(mes) if tope is None else tope
+        if n > limite:
             return Veredicto(
                 False,
-                f"La venta todavía no justifica tantas manos: este mes el tope es {tope} técnicos.")
+                f"La venta todavía no justifica tantas manos: este mes el tope es {limite} técnicos.")
         costo = d.cantidad * SALARIO_TECNICO_MES
         if caja < costo:
             return Veredicto(False, f"La caja no llega: hacen falta USD {costo:,.0f} y hay USD {caja:,.0f}.")
@@ -152,41 +175,47 @@ def aplicar_decision(d: DecisionGerente, empresa: Empresa, store: Store,
 
 
 # --------------------------------------------------------- la reunión mensual
-def _que_falta(empresa: Empresa, mes: int) -> tuple[str, str]:
+def _que_falta(empresa: Empresa, mes: int, store=None) -> tuple[str, str]:
     """Le dice al Gerente qué falta. El programa calcula; la IA decide cómo llenarlo."""
     objetivo_ventas = ventas_objetivo_del_mes(mes)
     objetivo_tecnicos = tecnicos_objetivo_del_mes(mes)
     potencia = ventas_potenciales(empresa)
+    atraso = len(store.ventas_sin_cita()) if store is not None else 0
 
     if potencia < objetivo_ventas:
         return ("falta_ventas",
                 f"Hoy podés hacer {potencia:.0f} ventas/día y hacen falta {objetivo_ventas:.0f}. "
                 "Contratá operadores o mejorá la conversión.")
-    if empresa.tecnicos < objetivo_tecnicos:
+    if empresa.tecnicos < objetivo_tecnicos or atraso > 0:
+        detalle = (f" la venta alcanza pero hay {atraso} instalaciones sin turno" if atraso > 0
+                   else " la venta alcanza")
         return ("falta_tecnicos",
-                f"La venta alcanza, pero te faltan técnicos: hay {empresa.tecnicos} y hacen falta "
+                f"{detalle.strip().capitalize()}: hay {empresa.tecnicos} técnicos y hacen falta "
                 f"{objetivo_tecnicos} para las {objetivo_ventas:.0f} ventas/día.")
     return ("mantener", "Vas bien: este mes no hace falta forzar nada.")
 
 
-def _prompt(directiva: str, empresa: Empresa, mes: int, aviso: str = "") -> str:
+def _prompt(directiva: str, empresa: Empresa, mes: int, aviso: str = "",
+            tope: int = 10, reales: float = 0.0, atraso: int = 0) -> str:
     objetivo_ventas = ventas_objetivo_del_mes(mes)
     objetivo_tecnicos = tecnicos_objetivo_del_mes(mes)
     potencia = ventas_potenciales(empresa)
     return (
         f"DIRECTIVA={directiva}\n"
         f"Mes {mes} de {META_MES}. Meta del dueño: {META_TECNICOS} técnicos para el mes {META_MES}.\n"
-        f"Ventas/día hoy: {potencia:.0f} (objetivo de este mes: {objetivo_ventas:.0f}).\n"
-        f"Técnicos activos: {empresa.tecnicos} (objetivo: {objetivo_tecnicos}).\n"
+        f"Ventas/día hoy: {potencia:.0f} (objetivo de este mes: {objetivo_ventas:.0f}; "
+        f"último mes cerrado: {reales:.0f}).\n"
+        f"Técnicos activos: {empresa.tecnicos} (objetivo: {objetivo_tecnicos}; "
+        f"tope de contratación: {tope}).\n"
         f"Operadores: {empresa.operadores}. Mejoras de base/servicio: {empresa.mejoras}.\n"
-        f"Caja: USD {empresa.caja:,.0f}.\n"
+        f"Instalaciones sin turno: {atraso}. Caja: USD {empresa.caja:,.0f}.\n"
         "Palancas disponibles: contratar operadores, contratar tecnicos, mejorar conversión.\n"
         + (f"AVISO DEL PROGRAMA: {aviso}\n" if aviso else "")
         + "Decidí cuánto mover y por qué."
     )
 
 
-def _ya_cumple(empresa: Empresa, mes: int) -> bool:
+def _ya_cumple(empresa: Empresa, mes: int, store=None) -> bool:
     return (ventas_potenciales(empresa) >= ventas_objetivo_del_mes(mes)
             and empresa.tecnicos >= tecnicos_objetivo_del_mes(mes))
 
@@ -246,7 +275,7 @@ def _red_seguridad(llm: LLMClient, store: Store, empresa: Empresa,
 def reunion_mensual(llm: LLMClient, store: Store, empresa: Empresa, mes: int,
                     rng: random.Random | None = None) -> dict:
     """Corre la reunión mensual del Gerente IA y devuelve lo que pasó."""
-    directiva, razon = _que_falta(empresa, mes)
+    directiva, razon = _que_falta(empresa, mes, store)
     aprobadas: list[DecisionGerente] = []
     avisos: list[str] = []
     rondas = 0
@@ -255,13 +284,18 @@ def reunion_mensual(llm: LLMClient, store: Store, empresa: Empresa, mes: int,
     for ronda in range(1, RONDAS_MAX + 1):
         rondas = ronda
         aviso = ""
+        prompt = _prompt(directiva, empresa, mes, razon,
+                         tope=tope_tecnicos(store, mes),
+                         reales=ventas_reales_promedio(store),
+                         atraso=len(store.ventas_sin_cita()))
         reunion = llm.complete(
             agent="gerente",
-            messages=[{"role": "user", "content": _prompt(directiva, empresa, mes, razon)}],
+            messages=[{"role": "user", "content": prompt}],
             schema=ReunionGerente,
         )
         for d in reunion.decisiones:
-            v = validar_decision(d, empresa, empresa.caja, mes)
+            v = validar_decision(d, empresa, empresa.caja, mes,
+                                 tope=tope_tecnicos(store, mes))
             store.guardar_decision(mes, d.palanca.value, str(d.cantidad), d.razon,
                                    v.ok, "" if v.ok else v.motivo)
             if v.ok:
@@ -272,15 +306,15 @@ def reunion_mensual(llm: LLMClient, store: Store, empresa: Empresa, mes: int,
             else:
                 aviso = v.motivo
 
-        if _ya_cumple(empresa, mes):
+        if _ya_cumple(empresa, mes, store):
             break
-        nueva_directiva, razon = _que_falta(empresa, mes)
+        nueva_directiva, razon = _que_falta(empresa, mes, store)
         if nueva_directiva == directiva and aviso:
             razon = f"{razon} Además: {aviso}"
         directiva = nueva_directiva
 
     # Red de seguridad: transparencia total, queda escrito en el acta.
-    if not _ya_cumple(empresa, mes):
+    if not _ya_cumple(empresa, mes, store):
         avisos, extra = _red_seguridad(llm, store, empresa, mes)
         inversion += extra
 

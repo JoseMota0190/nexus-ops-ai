@@ -15,7 +15,9 @@
   vuelva a PREGUNTAR para confirmar. No dar por sentado.
 - Máximo **4 preguntas por bloque** (usar la herramienta de preguntas).
 - Trabajar en **fases pequeñas y verificables**. Correr el modo mock tras cada cambio.
-- **NO subir nada a GitHub** hasta que el autor lo diga. (Aún no autorizado.)
+- **GitHub:** el autor YA AUTORIZÓ el push cuando toque ("Sí, autorizo cuando toque").
+  Antes de subir: renombrar `master` → `main`. Repo debe quedar **PÚBLICO** (es requisito de
+  inscripción: public repo + Application URL + Docker + README + video + slides).
 - Ante duda entre "más funciones" y "más estabilidad", elegir estabilidad.
 
 ### Proyecto relacionado pero SEPARADO
@@ -90,8 +92,9 @@ Reglas del track Commerce (lablab.ai):
 - Las "reuniones mensuales" del gerente se **SIMULAN con un agente IA gerente** en la demo.
 
 ### Reglas locales simuladas (DECIDIDO incluirlas)
-- **Registro "No Llame"** (AAIP, Ley 25.326): ~8% de leads. El teleoperador NO puede hacer
-  llamada en frío a esos; solo atender entrada.
+- **Registro de leads:** TODOS los leads entran por la web pidiendo ser llamados.
+  **NO hay llamada en frío** (decisión del autor, cerrada). El "No Llame" de AAIP quedó
+  FUERA del proyecto — no simularlo, no mencionarlo.
 - **Sello ARCA:** el comprobante lleva **"SIMULADO – SIN VALIDEZ FISCAL"**. Jamás afirmar
   facturación real. (Evolus NO es ERP ni factura.)
 
@@ -101,7 +104,7 @@ Reglas del track Commerce (lablab.ai):
 
 | Personaje | Qué hace | ¿Quién decide? |
 |---|---|---|
-| **Teleoperador** (×3) | Llama, califica, agenda, anota motivo de fallo, respeta "No Llame" | IA **habla** |
+| **Teleoperador** (×3) | Llama, califica, agenda, anota motivo de fallo | IA **habla** |
 | **Coordinador de Agenda** | Negocia fecha/hora CON EL OPERADOR por mensajes; tiene la pizarra de turnos libres; cuando acuerdan **escribe al cliente** a confirmar | IA **habla** |
 | **Coordinador de Técnicos** | Reparte técnicos por zona | **PROGRAMA calcula, IA EXPLICA** (decidido tras razonar juntos: cumple la regla de no depender solo del LLM y evita repartos imposibles) |
 | **Gerente** | Cada mes: métricas, mejora base/servicio, decide contratar | IA **analiza y aconseja** |
@@ -129,43 +132,54 @@ porque el gerente **sube la conversión**. Pregunta del pitch: *"¿cómo vendo 5
 
 ## 6. ESTADO ACTUAL (lo que YA ESTÁ construido y PROBADO)
 
-Repo local en **`C:\Users\josem\Projects\nexus-ops-ai`** (git inicializado, 2 commits:
-`80f399a` esqueleto, `ac870ac` motor). **Sin remote, sin push (no autorizado aún).**
+Repo local en **`C:\Users\josem\projects\nexus-ops-ai`** (git inicializado).
+**Sin remote, sin push todavía** (autorizado, pero se sube recién en la entrega final).
 Rama en `master` (OJO: pendiente renombrar a `main` antes del push; autor lo decidió pero
 aún no se hizo).
 
-**Commiteado:**
-- `README.md`, `LICENSE` (MIT), `.env.example`, `.gitignore`, `backend/requirements.txt`.
-- `backend/llm/` — cliente LLM único (`client.py`) con **modo mock**, **caché/replay**
-  (`cache.py`), **métricas** (`metrics.py`: latencia p50/p95, tokens, tokens/s → panel AMD),
-  config por env (`config.py`). Mock realista en español (`mock.py`).
-- `backend/schemas/` — `TeleoperadorResponse`, `DespachoResponse` (Pydantic, JSON estructurado).
-- `backend/engine/` — `zones.py` (15 barrios CABA con coords y peso de demanda), `clock.py`
-  (reloj x120 calculado, no hardcodeado), `leads.py` (leads ficticios 200–250/día, semilla,
-  ~8% No Llame), `technicians.py` (asignación por algoritmo con traslado), `montecarlo.py`
-  (historial largo con agregación por mes).
-- `backend/tests/` — **12 tests pasando** (5 LLM + 7 motor). Correr con:
-  `cd backend && .venv\Scripts\python.exe tests\test_llm.py` y `...\test_engine.py`.
+**✅ Fases 2 a 8 construidas y probadas** (ver detalle de fases más abajo):
+- `backend/store.py` — SQLite real (clientes, leads, llamadas, motivos, citas, técnicos,
+  decisiones del gerente, actas, resúmenes por día/mes).
+- `backend/engine/business.py` — TODAS las constantes del negocio (precios, sueldos, tasas,
+  meta 10 técnicos, 220 leads/día, 50 llamadas/operador).
+- `backend/engine/leads.py` · `calls.py` · `agenda.py` · `technicians.py` · `gerente.py` ·
+  `simulation.py` — la operación completa: leads → llamadas con motivo de fallo → agenda
+  semanal (lun–sáb, turnos 9/12/16) → reparto de técnicos por algoritmo → reunión mensual
+  del Gerente IA con validador + **red de seguridad transparente**.
+- `backend/api.py` — FastAPI completo: estado, resumenes, `/api/mes` (avanzar mes),
+  `/api/todo` (6 meses), `/api/dia`, `/api/reiniciar`, actas, llamadas, mensajes, mapa,
+  métricas AMD, `llamada_en_vivo`, `objetivos`, `escenario` (sliders).
+- `frontend/` — pantalla del dueño en React + Vite: KPIs, sliders, escenarios, actas,
+  telégrafo de llamadas, motivos de fallo, agente vivo, panel AMD, **mapa CABA animado**.
+  `npm run build` compila; `npm run smoke` da **31/31 checks OK**.
+- `docker-compose.yml` + `backend/Dockerfile` + `frontend/Dockerfile` + `nginx.conf` +
+  `render.yaml` + `frontend/netlify.toml` + `scripts/dev.cmd`.
+- `backend/tests/` — **33 tests pasando**: `test_engine.py` (20), `test_llm.py` (5),
+  `test_api.py` (8) + `mirar_negocio.py` (tablero de los 9 meses).
 
-**⚠️ NOTA:** el motor actual (leads 200–250/día, 10 técnicos fijos) es un ESQUELETO GENÉRICO
-anterior a las decisiones del §3. **La Fase 2+ debe REARMARLO** al modelo real: 3 operadores
-vendiendo 2 c/u, 2 técnicos arrancando, agenda semanal, gerente que crece a 10 técnicos.
-No borrar, adaptar.
+**Números verificados** (`mirar_negocio.py`): mes 1 → 6.7 ventas/día, 3 operadores,
+2 técnicos. Mes 9 → 32 ventas/día, 8 operadores, **10 técnicos (meta cumplida)**.
+Ingresos ×6.4 vs costos ×2.7 → **los costos crecen más lento que las ventas** (el argumento
+del pitch).
+
+**⚠️ El `leads.py` viejo (200–250/día, 8% "No Llame", 10 técnicos fijos) ya fue REARMADO**
+al modelo real del §3. No hay que rearmar nada más.
 
 ---
 
 ## 7. FASES DE CONSTRUCCIÓN
 
 1. ✅ **Hecha:** estructura, cliente LLM mock, motor genérico, tests.
-2. ⬜ **SIGUIENTE →** Base de datos REAL (SQLite) de clientes ficticios (la que "leen" los operadores).
-3. ⬜ 3 teleoperadores + registro de llamadas (log sintético) + motivos de fallo.
-4. ⬜ Coordinador de agenda + mensajes operador↔coordinador + confirmación al cliente.
-5. ⬜ Coordinador de técnicos (reparto calculado por programa, IA explica).
-6. ⬜ Gerente IA + reuniones mensuales + crecimiento a 10 técnicos.
-7. ⬜ Pantalla del dueño (KPIs, sliders, lead en vivo texto, mapa animado, métricas AMD).
-8. ⬜ Simulación por meses (6 solos + 3 a mano, con guardado en SQLite).
-9. ⬜ Docker (Dockerfile + docker-compose), README que corra, video (voz clonada, fallback a
-   voz real), pitch en inglés con subtítulos.
+2. ✅ **Hecha:** Base de datos REAL (SQLite) de clientes ficticios (la que "leen" los operadores).
+3. ✅ **Hecha:** 3 teleoperadores + registro de llamadas (log sintético) + motivos de fallo.
+4. ✅ **Hecha:** Coordinador de agenda + mensajes operador↔coordinador + confirmación al cliente.
+5. ✅ **Hecha:** Coordinador de técnicos (reparto calculado por programa, IA explica).
+6. ✅ **Hecha:** Gerente IA + reuniones mensuales + crecimiento a 10 técnicos.
+7. ✅ **Hecha:** Pantalla del dueño (KPIs, sliders, lead en vivo texto, mapa animado, métricas AMD).
+8. ✅ **Hecha:** Simulación por meses (6 solos + 3 a mano, con guardado en SQLite).
+9. 🟡 **EN CURSO →** Docker (Dockerfile + docker-compose ✅), README que corra ✅,
+   **faltan:** deploy Render + Netlify, video (voz clonada, fallback a voz real),
+   pitch en inglés con subtítulos, subir a GitHub (renombrar `master` → `main`).
 
 **Recorte de emergencia si falta tiempo:** primero el mapa animado, luego extras. NUNCA recortar
 AMD, el envío ni el README.
@@ -189,8 +203,12 @@ AMD, el envío ni el README.
 Empresa "Nexus Alarm" · proyecto nexus-ops-ai · Python/FastAPI + React · SQLite · MIT ·
 TokenFactory · Evolus extractor+workflow aislado · **sin auditor visual** (facturas con errores
 Monte Carlo para Evolus) · lead en vivo solo texto · **CON mapa animado** (primer corte si falta
-tiempo) · Google descartado · No Llame + ARCA simulados · 2 técnicos + 3 operadores arranque ·
+tiempo) · Google descartado · **solo ARCA simulado, NO hay "No Llame"** (todos los leads son de
+la web que pide ser llamado, sin llamada en frío) · 2 técnicos + 3 operadores arranque ·
 10 técnicos meta mes 9 · lunes a sábados · 3 turnos (9am/12pm/4pm) · ventas semana siguiente ·
 50 llamadas/operador/día (150 total, fluctúa) · 6 ventas/día arranque · reparto: programa
 calcula + IA explica · gerente IA simulado · 6 meses solos + 3 manuales guardando · voz clonada
-con fallback real, slides en inglés · solo fase online · hosting free tier.
+con fallback real, slides en inglés · solo fase online · hosting free tier ·
+**repo PÚBLICO en GitHub + push autorizado** (renombrar `master` → `main` antes de subir).
+
+Plan completo y cronograma: `C:\Users\josem\.opencode\plan\nexus-ops-ai-plan.md`.

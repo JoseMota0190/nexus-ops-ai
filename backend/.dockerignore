@@ -1,0 +1,23 @@
+# No mandar nada que ensucie la imagen del backend
+.venv/
+venv/
+__pycache__/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+*.egg-info/
+
+# Datos y secretos (la base se crea en el contenedor; el volumen la preserva)
+data/
+*.db
+*.db-wal
+*.db-shm
+.env
+
+# Tests y basura del OS
+tests/
+.DS_Store
+Thumbs.db
+Dockerfile
+.dockerignore

@@ -1,0 +1,56 @@
+# ============================================================
+# Nexus Alarm — un solo comando para levantar todo:
+#
+#   docker compose up --build
+#
+#   Backend  -> http://localhost:8000/api/estado
+#   Frontend -> http://localhost:8080
+#
+# Los valores de .env (copiá .env.example a .env) se usan solos.
+# ============================================================
+services:
+  backend:
+    build: ./backend
+    container_name: nexus-backend
+    ports:
+      # Si el 8000 está ocupado en tu máquina: BACKEND_PORT=8010 docker compose up
+      - "${BACKEND_PORT:-8000}:8000"
+    environment:
+      # Mock por defecto para que la demo corra sin gastar créditos AMD.
+      # Para usar TokenFactory de verdad: USE_MOCK=false en .env
+      USE_MOCK: ${USE_MOCK:-true}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://notebooks.amd.com/tokenfactory/v1}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-}
+      LLM_MAX_RETRIES: ${LLM_MAX_RETRIES:-2}
+      LLM_TIMEOUT_S: ${LLM_TIMEOUT_S:-30}
+      # La base vive en el volumen, no en la imagen
+      NEXUS_DB: /app/data/nexus.db
+    volumes:
+      - nexus_data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/estado', timeout=5).status == 200 else 1)"]
+      interval: 30s
+      timeout: 6s
+      retries: 3
+      start_period: 25s
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # El frontend llama a /api relativo; nginx hace de proxy hacia el backend.
+        VITE_API_URL: ${VITE_API_URL:-/}
+    container_name: nexus-frontend
+    ports:
+      # Si el 8080 está ocupado: FRONTEND_PORT=8081 docker compose up
+      - "${FRONTEND_PORT:-8080}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+# La base de datos de la simulación, entre reinicios del contenedor
+volumes:
+  nexus_data:

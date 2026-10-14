@@ -171,15 +171,30 @@ def agenda_mock(messages: list[dict[str, str]], rng: random.Random) -> dict[str,
 def gerente_mock(messages: list[dict[str, str]], rng: random.Random) -> dict[str, Any]:
     """Simula la decisión del Gerente IA en su reunión mensual.
 
-    El programa le pasa una DIRECTIVA explícita (el programa calcula lo que falta);
-    la IA decide CÓMO llenarlo y por qué.
+    El programa le pasa una DIRECTIVA explícita y los números del mes (el
+    programa calcula lo que falta); la IA decide CÓMO llenarlo y por qué, leyendo
+    esos números para proponer cantidades coherentes.
     """
+    import math
+    import re
+
     ultimo = next((m["content"] for m in reversed(messages) if m.get("role") == "user"), "")
     directiva = "decide_libre"
     for linea in ultimo.splitlines():
         if linea.upper().startswith("DIRECTIVA="):
             directiva = linea.split("=", 1)[1].strip()
             break
+
+    def num(patron: str, default: int) -> int:
+        m = re.search(patron, ultimo)
+        return int(float(m.group(1))) if m else default
+
+    tecnicos = num(r"T[ée]cnicos activos:\s*(\d+)", 2)
+    tope = num(r"tope de contrataci[oó]n:\s*(\d+)", 10)
+    potencia = num(r"Ventas/d[ií]a hoy:\s*(\d+)", 6)
+    objetivo_ventas = num(r"objetivo de este mes:\s*(\d+)", 6)
+    operadores = num(r"Operadores:\s*(\d+)", 3)
+    mejoras = num(r"Mejoras de base/servicio:\s*(\d+)", 0)
 
     if directiva == "escribe_acta":
         return {
@@ -190,31 +205,46 @@ def gerente_mock(messages: list[dict[str, str]], rng: random.Random) -> dict[str
             "presion": "sin novedad",
         }
 
+    if directiva == "mantener":
+        return {
+            "decisiones": [],
+            "titulo": "Acta de gerencia — mes sin cambios",
+            "resumen": ("Los números dan bien este mes: no hay que forzar nada. "
+                        "Sigo vigilando la agenda y la caja."),
+            "presion": "sin novedad",
+        }
+
     if directiva == "falta_tecnicos":
+        cantidad = max(1, min(tope - tecnicos, 5))
         decisiones = [{
             "palanca": "contratar_tecnicos",
-            "cantidad": 2,
-            "razon": ("La venta viene sostenida: si no sumo técnicos ahora, las instalaciones "
-                      "se nos corren a la semana siguiente."),
+            "cantidad": cantidad,
+            "razon": ("La venta viene sostenida y las instalaciones se nos corren: "
+                      "si no sumo manos ahora, el cliente espera dos semanas."),
         }]
         titulo = "Acta de gerencia — sumamos manos a la instalación"
-        presion = "Faltaban técnicos para cubrir la agenda."
+        presion = f"Faltan técnicos para cubrir la agenda (tope: {tope})."
 
     elif directiva == "falta_ventas":
+        # Cuántas llamadas faltan para llegar al objetivo, y cuánto mejora eso.
+        tasa = (0.14 + 0.02 * mejoras) * (0.30 + 0.03 * mejoras)
+        faltan = max(0, objetivo_ventas - potencia)
+        llamadas_nuevas = math.ceil(faltan / tasa) if tasa > 0 else 50
+        ops = max(1, min(math.ceil(llamadas_nuevas / 50), 3))
         decisiones = [
-            {"palanca": "contratar_operadores", "cantidad": 1,
-             "razon": ("Necesito más llamadas para llegar al volumen del mes sin frenar "
-                       "la agenda de instalaciones.")},
+            {"palanca": "contratar_operadores", "cantidad": ops,
+             "razon": ("Necesito más llamadas para llegar al volumen del mes sin "
+                       "frenar la agenda de instalaciones.")},
             {"palanca": "mejorar_conversion", "cantidad": 1,
              "razon": ("Mejoro la base de datos y el servicio del equipo: vende más "
-                       "el mismo que llama.")},
+                       "el mismo que llama, y así no crezco solo con gente.")},
         ]
-        titulo = "Acta de gerente — más llamadas y mejor conversión"
+        titulo = "Acta de gerencia — más llamadas y mejor conversión"
         presion = "La venta va corta para el objetivo del mes."
 
     else:
         decisiones = []
-        titulo = "Acta de gerencia — mes sin cambios"
+        titulo = "Acta de gerencia — mes en curso"
         presion = "sin novedad"
 
     return {

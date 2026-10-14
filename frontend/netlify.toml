@@ -1,0 +1,41 @@
+# ============================================================
+# Netlify — hosting del frontend (gratis).
+#
+# Cómo publicar:
+#   1. Subo el proyecto a GitHub (cuando el autor diga).
+#   2. En app.netlify.com: "Add new site" -> "Import an existing project".
+#   3. Elego el repo y pongo como base directory  `frontend`.
+#   4. Netlify lee este archivo solo y arma el sitio.
+#
+# ATENCIÓN: cambiá la URL de abajo por la de TU backend en Render
+# (la que te da Render al publicar, algo como https://nexus-ops-ai.onrender.com).
+# Sin ese paso el frontend no encuentra a la API.
+# ============================================================
+
+[build]
+  # El frontend necesita que esté instalado node_modules; npm ci con package-lock
+  command = "npm run build"
+  publish = "dist"
+  # (Si en Netlify configurás base directory = frontend, esta línea sobra)
+  # base = "frontend"
+
+# En local el frontend llama a /api relativo (anda con docker compose).
+# En producción la llamada /api/* se redirige al backend de Render.
+[[redirects]]
+  from = "/api/*"
+  # ⬇⬇⬇ CAMBIAR por la URL real del backend en Render ⬇⬇⬇
+  to = "https://nexus-ops-ai.onrender.com/api/*"
+  status = 200
+  force = true
+
+# Cualquier otra ruta cae en la SPA (index.html)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[build.environment]
+  NODE_VERSION = "20"
+  # El frontend puede usar esta variable en tiempo de build para saber
+  # la URL base de la API. Con "/" usa el proxy de arriba (recomendado).
+  VITE_API_URL = "/"

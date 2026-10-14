@@ -146,6 +146,9 @@ class Simulacion:
         negociados = 0
         if dia == DIAS_POR_SEMANA - 1:
             agendadas, sin_capacidad, negociados = self._cerrar_semana(semana)
+        else:
+            # Es un indicador (backlog), no un acumulado: se mide al cerrar la semana.
+            sin_capacidad = len(self.store.ventas_sin_cita())
 
         resumen = {
             "semana": semana, "dia": dia, "mes": e.mes,
@@ -233,7 +236,7 @@ class Simulacion:
                       COALESCE(SUM(costos),0) AS cost, COALESCE(SUM(llamadas),0) AS llam,
                       COALESCE(SUM(atendidas),0) AS ate, COALESCE(SUM(ventas),0) AS ven,
                       COALESCE(SUM(instalaciones),0) AS ins,
-                      COALESCE(SUM(sin_capacidad),0) AS sc,
+                      MAX(sin_capacidad) AS sc,
                       COALESCE(SUM(leads),0) AS leads
                FROM resumen_dia WHERE semana >= ? AND semana <= ?""",
             (inicio_semana, e.semana - 1)).fetchone()

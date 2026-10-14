@@ -1,0 +1,53 @@
+# ============================================================
+# Render — Blueprint para publicar el BACKEND (gratis, free tier).
+#
+# Cómo publicar:
+#   1. Subir el proyecto a GitHub (cuando el autor diga).
+#   2. En app.onrender.com: "New" -> "Blueprint".
+#   3. Elegir el repo. Render lee este archivo solo y crea el servicio.
+#
+# El FRONTEND va en Netlify (ver frontend/netlify.toml).
+# ============================================================
+services:
+  - type: web
+    name: nexus-ops-ai-backend
+    runtime: python
+    # La app arranca desde backend/ (ahi esta api.py)
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    # Render pone el puerto en la variable $PORT; hay que escuchar en 0.0.0.0
+    startCommand: uvicorn api:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/estado
+    autoDeploy: true
+
+    envVars:
+      # Mock por defecto para que la demo corra sin gastar créditos AMD.
+      # Para prender el cerebro AMD de verdad: cambiar a "false" y completar
+      # LLM_API_KEY y LLM_MODEL (se setean desde el panel de Render, sin commitear).
+      - key: USE_MOCK
+        value: "true"
+      - key: LLM_BASE_URL
+        value: "https://notebooks.amd.com/tokenfactory/v1"
+      - key: LLM_API_KEY
+        sync: false          # lo cargás a mano en el panel de Render
+      - key: LLM_MODEL
+        sync: false
+      - key: LLM_MAX_RETRIES
+        value: "2"
+      - key: LLM_TIMEOUT_S
+        value: "30"
+      # La base SQLite vive en /app/data (disco persistente si lo activás abajo)
+      - key: NEXUS_DB
+        value: "/app/data/nexus.db"
+
+    # --------------------------------------------------------
+    # DISCO PERSISTENTE (guarda la base entre reinicios/redeploys).
+    # OJO: los planes gratis de Render NO aceptan discos.
+    # La demo anda igual sin disco: la simulación regenera la base
+    # sola al arrancar. Si más adelante pagás un plan, descomentar:
+    #
+    # disk:
+    #   name: nexus-data
+    #   mountPath: /app/data
+    #   sizeGB: 1
+    # --------------------------------------------------------
