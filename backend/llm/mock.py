@@ -2,10 +2,13 @@
 
 Permiten correr TODO el flujo sin gastar créditos de GPU ni tocar la red. Las
 respuestas son realistas y en español, y respetan las reglas de negocio simuladas
-(Registro "No Llame", validación de dirección en CABA, etc.).
+(www/lead entrante, dirección en CABA, tarifa del kit, etc.).
 
 En lugar de pedirle al modelo que genere texto libre, acá devolvemos directamente
 el JSON que el agente debería producir, para que el flujo sea 100% determinista.
+
+Regla del "actor": la IA habla solo en unas pocas llamadas/charlas (las de la
+demo). El volumen (miles de llamadas) lo calcula el programa sin tocar la red.
 """
 from __future__ import annotations
 
@@ -22,7 +25,24 @@ BARRIOS_CABA = [
 ]
 
 # Palabras que indican urgencia en el mensaje del cliente.
-_URGENCIA = ["urgente", "robo", "se metieron", "hoy", "ya", "ahora", "esta noche", "asaltaron"]
+_URGENCIA = ["urgente", "robo", "se metieron", "hoy", "ya", "ahora",
+             "esta noche", "asaltaron", "corrí"]
+
+# Motivos por los que atienden y no compran (lista fija, decisión del autor).
+MOTIVOS_NO_COMPRA = [
+    ("Muy caro para mí", 0.30),
+    ("Ya tiene otra empresa de seguridad", 0.22),
+    ("No le interesa tener alarma", 0.25),
+    ("No es el momento / lo piensa", 0.15),
+    ("Quiere consultar con la familia", 0.08),
+]
+
+_KITS = ["hogar_basico", "hogar_plus", "comercial"]
+_KIT_LABEL = {
+    "hogar_basico": "el kit Hogar Básico (USD 180)",
+    "hogar_plus": "el kit Hogar Plus (USD 320)",
+    "comercial": "el kit Comercial (USD 550)",
+}
 
 
 def _barrio_de(direccion: str) -> str | None:
@@ -35,17 +55,23 @@ def _barrio_de(direccion: str) -> str | None:
 
 def _es_caba(direccion: str) -> bool:
     d = direccion.lower()
-    fuera = ["tigre", "san isidro", "lanús", "avellaneda", "la plata", "morón", "ituzainó"]
+    fuera = ["tigre", "san isidro", "lanús", "avellaneda", "la plata", "morón"]
     if any(f in d for f in fuera):
         return False
     return _barrio_de(d) is not None
+
+
+def elegir_motivo(rng: random.Random) -> str:
+    """Motivo del 'no', según una lista fija con probabilidades."""
+    nombres = [m for m, _ in MOTIVOS_NO_COMPRA]
+    pesos = [p for _, p in MOTIVOS_NO_COMPRA]
+    return rng.choices(nombres, weights=pesos, k=1)[0]
 
 
 def teleoperador_mock(messages: list[dict[str, str]], rng: random.Random) -> dict[str, Any]:
     """Simula la respuesta del teleoperador a partir del último mensaje del cliente."""
     ultimo = next((m["content"] for m in reversed(messages)
                    if m.get("role") == "user"), "").lower()
-
     direccion = messages[0]["content"] if messages else ""
     barrio = _barrio_de(ultimo) or _barrio_de(direccion)
     valida = _es_caba(ultimo) or _es_caba(direccion)
@@ -59,7 +85,8 @@ def teleoperador_mock(messages: list[dict[str, str]], rng: random.Random) -> dic
             "barrio": None,
             "propone_horario": None,
             "cierra_cita": False,
-            "en_registro_no_llamar": False,
+            "producto": None,
+            "motivo_no_compra": "Fuera de nuestra zona de cobertura.",
             "requiere_visita_humana": False,
             "motivo": "Dirección fuera de la cobertura de CABA.",
         }
@@ -74,21 +101,128 @@ def teleoperador_mock(messages: list[dict[str, str]], rng: random.Random) -> dic
         calif = Calificacion.FRIELO
         horario = None
 
-    cierra = calif != Calificacion.FRIELO and rng.random() < 0.7
+    # El cierre depende de la calificación (la tasa real la fija el programa).
+    cierra = calif in (Calificacion.CALIDO, Calificacion.TIBIO) and rng.random() < 0.6
+    kit = rng.choices(_KITS, weights=[0.45, 0.38, 0.17], k=1)[0]
+
+    if cierra:
+        return {
+            "reply_text": (
+                f"¡Genial! Te anoto {_KIT_LABEL[kit]}. "
+                f"Te aviso por WhatsApp cuando tengamos el técnico confirmado."
+            ),
+            "calificacion": calif.value,
+            "direccion_valida_caba": True,
+            "barrio": barrio,
+            "propone_horario": horario,
+            "cierra_cita": True,
+            "producto": kit,
+            "motivo_no_compra": "",
+            "requiere_visita_humana": False,
+            "motivo": "Cierre de venta en la llamada.",
+        }
+
     return {
         "reply_text": (
-            f"¡Perfecto! Tenemos disponibilidad en {barrio or 'CABA'}. "
-            f"¿Te queda bien {horario}?" if horario else
-            f"Gracias por escribirnos. Te paso info de nuestros kits y te contactamos."
-        ),
-        "calificacion": calif.value,
+            f"Dejame tu número y te paso la info. {f'Te queda bien {horario}?' if horario else ''}"
+        ).strip(),
+        "calificacion": Calificacion.NO_COMPRA.value,
         "direccion_valida_caba": True,
         "barrio": barrio,
         "propone_horario": horario,
-        "cierra_cita": cierra,
-        "en_registro_no_llamar": False,
+        "cierra_cita": False,
+        "producto": None,
+        "motivo_no_compra": elegir_motivo(rng),
         "requiere_visita_humana": False,
-        "motivo": "Urgencia detectada." if urgente else "Interés estándar.",
+        "motivo": "Atendió pero no compró.",
+    }
+
+
+def agenda_mock(messages: list[dict[str, str]], rng: random.Random) -> dict[str, Any]:
+    """Simula al Coordinador de Agenda acordando día/hora con el operador."""
+    ultimo = next((m["content"] for m in reversed(messages) if m.get("role") == "user"), "")
+    dia = 0
+    turno = "9am"
+    for k, v in (("lunes", 0), ("martes", 1), ("miércoles", 2), ("jueves", 3),
+                 ("viernes", 4), ("sábado", 5)):
+        if k in ultimo.lower():
+            dia = v
+    for k, v in (("4pm", "4pm"), ("tarde", "4pm"), ("mediodía", "12pm"),
+                 ("12pm", "12pm"), ("mañana", "9am"), ("9am", "9am")):
+        if k in ultimo.lower():
+            turno = v
+            break
+    cliente = "la cliente"
+    horas = {"9am": "09:00", "12pm": "12:00", "4pm": "16:00"}
+    dias = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado"]
+    return {
+        "turno_propuesto": turno,
+        "dia": dia,
+        "cierra_acuerdo": True,
+        "texto_para_cliente": (
+            f"¡Hola! Te confirmo la instalación de tu alarma el {dias[dia]} a las "
+            f"{horas.get(turno, '09:00')}. El técnico se presenta en el horario "
+            "acordado. ¡Gracias por confiar en Nexus Alarm!"
+        ),
+        "nota_interna": f"Turno reservado para {cliente}: {turno} del día {dia}.",
+    }
+
+
+def gerente_mock(messages: list[dict[str, str]], rng: random.Random) -> dict[str, Any]:
+    """Simula la decisión del Gerente IA en su reunión mensual.
+
+    El programa le pasa una DIRECTIVA explícita (el programa calcula lo que falta);
+    la IA decide CÓMO llenarlo y por qué.
+    """
+    ultimo = next((m["content"] for m in reversed(messages) if m.get("role") == "user"), "")
+    directiva = "decide_libre"
+    for linea in ultimo.splitlines():
+        if linea.upper().startswith("DIRECTIVA="):
+            directiva = linea.split("=", 1)[1].strip()
+            break
+
+    if directiva == "escribe_acta":
+        return {
+            "decisiones": [],
+            "titulo": "Acta de gerencia — mes en curso",
+            "resumen": ("Revisé ventas, agenda y caja. Moví lo que hacía falta para "
+                        "seguir creciendo sin romper la operación."),
+            "presion": "sin novedad",
+        }
+
+    if directiva == "falta_tecnicos":
+        decisiones = [{
+            "palanca": "contratar_tecnicos",
+            "cantidad": 2,
+            "razon": ("La venta viene sostenida: si no sumo técnicos ahora, las instalaciones "
+                      "se nos corren a la semana siguiente."),
+        }]
+        titulo = "Acta de gerencia — sumamos manos a la instalación"
+        presion = "Faltaban técnicos para cubrir la agenda."
+
+    elif directiva == "falta_ventas":
+        decisiones = [
+            {"palanca": "contratar_operadores", "cantidad": 1,
+             "razon": ("Necesito más llamadas para llegar al volumen del mes sin frenar "
+                       "la agenda de instalaciones.")},
+            {"palanca": "mejorar_conversion", "cantidad": 1,
+             "razon": ("Mejoro la base de datos y el servicio del equipo: vende más "
+                       "el mismo que llama.")},
+        ]
+        titulo = "Acta de gerente — más llamadas y mejor conversión"
+        presion = "La venta va corta para el objetivo del mes."
+
+    else:
+        decisiones = []
+        titulo = "Acta de gerencia — mes sin cambios"
+        presion = "sin novedad"
+
+    return {
+        "decisiones": decisiones,
+        "titulo": titulo,
+        "resumen": ("Miré el tablero del mes y tomé la decisión que mejor encaja "
+                    "con la meta del dueño."),
+        "presion": presion,
     }
 
 

@@ -84,6 +84,10 @@ class LLMClient:
         t0 = time.perf_counter()
         if agent == "teleoperador":
             data = _mock.teleoperador_mock(messages, self._rng)
+        elif agent == "agenda":
+            data = _mock.agenda_mock(messages, self._rng)
+        elif agent == "gerente":
+            data = _mock.gerente_mock(messages, self._rng)
         elif agent == "despacho":
             exc = json.loads(messages[-1]["content"])
             data = _mock.despacho_mock(exc, self._rng)
