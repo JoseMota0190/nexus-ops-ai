@@ -17,9 +17,12 @@ services:
       - "${BACKEND_PORT:-8000}:8000"
     environment:
       # Mock por defecto para que la demo corra sin gastar créditos AMD.
-      # Para usar TokenFactory de verdad: USE_MOCK=false en .env
+      # Para usar AMD de verdad: USE_MOCK=false en .env
       USE_MOCK: ${USE_MOCK:-true}
-      LLM_BASE_URL: ${LLM_BASE_URL:-https://notebooks.amd.com/tokenfactory/v1}
+      # AMD Radeon Cloud (endpoints compatibles con OpenAI, gratis y sin aprobación).
+      # El catálogo gratis no trae Gemma: si desplegamos Gemma en instancia propia,
+      # acá se cambia la URL a la de la instancia (p. ej. /spaces/<id>/v1).
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://developer.amd.com.cn/radeon/api/v1}
       LLM_API_KEY: ${LLM_API_KEY:-}
       LLM_MODEL: ${LLM_MODEL:-}
       LLM_MAX_RETRIES: ${LLM_MAX_RETRIES:-2}

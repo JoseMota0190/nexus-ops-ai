@@ -33,7 +33,9 @@ def _int(name: str, default: int) -> int:
 @dataclass(frozen=True)
 class LLMConfig:
     use_mock: bool = True
-    base_url: str = "https://notebooks.amd.com/tokenfactory/v1"
+    # AMD Radeon Cloud: endpoints compatibles con OpenAI, gratis y sin aprobación.
+    # Gemma se sirve desde una instancia propia (Dedicated Model API) con la misma clave.
+    base_url: str = "https://developer.amd.com.cn/radeon/api/v1"
     api_key: str = ""
     model: str = ""
     max_retries: int = 2  # regla: máx. 2 reintentos
@@ -48,7 +50,8 @@ class LLMConfig:
 def get_config() -> LLMConfig:
     return LLMConfig(
         use_mock=_bool("USE_MOCK", True),
-        base_url=os.getenv("LLM_BASE_URL", "https://notebooks.amd.com/tokenfactory/v1").rstrip("/"),
+        base_url=os.getenv("LLM_BASE_URL",
+                           "https://developer.amd.com.cn/radeon/api/v1").rstrip("/"),
         api_key=os.getenv("LLM_API_KEY", ""),
         model=os.getenv("LLM_MODEL", ""),
         max_retries=max(0, _int("LLM_MAX_RETRIES", 2)),

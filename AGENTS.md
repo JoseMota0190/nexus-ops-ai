@@ -15,6 +15,8 @@
   vuelva a PREGUNTAR para confirmar. No dar por sentado.
 - Máximo **4 preguntas por bloque** (usar la herramienta de preguntas).
 - Trabajar en **fases pequeñas y verificables**. Correr el modo mock tras cada cambio.
+- **⏸️ RETOMADA (14 oct):** antes de escribir o modificar **cualquier** código, recorrer la
+  **checklist del §8** punto por punto junto con el autor. Ver §7 (pausa) y §8 (lista).
 - **GitHub:** el autor YA AUTORIZÓ el push cuando toque ("Sí, autorizo cuando toque").
   Antes de subir: renombrar `master` → `main`. Repo debe quedar **PÚBLICO** (es requisito de
   inscripción: public repo + Application URL + Docker + README + video + slides).
@@ -33,10 +35,18 @@ Gemelo digital de una empresa ficticia de instalación de alarmas en CABA (**"Ne
 Un enjambre de agentes IA opera el proceso comercial completo y el dueño ve KPIs y prueba
 escenarios "qué pasa si".
 
-- **Prioridad máxima: AMD.** El cerebro corre en modelo abierto servido por **TokenFactory**
-  (`notebooks.amd.com/tokenfactory`). Es requisito de elegibilidad. Debe verse en la demo.
+- **Prioridad máxima: AMD.** El cerebro corre en un modelo abierto servido por **AMD**.
+  Es requisito de elegibilidad y debe verse en la demo.
+  **Actualización 14 oct:** el portal `notebooks.amd.com/tokenfactory` respondió
+  *"Your email is not registered for API key distribution"* → el autor decidió **NO insistir
+  más**. El motor pasa a ser **AMD Radeon Cloud** (`developer.amd.com.cn/radeon`).
 - **Evolus (secundario, módulo aislado):** extractor de documentos + workflow de contratos.
-- **Google/Gemini: DESCARTADO** por ahora (decisión del autor).
+- **Google/Gemma: YA NO ESTÁ DESCARTADO** (cambio de decisión del autor, 14 oct).
+  Google DeepMind entró como partner del hackathon y **Gemma corre sobre GPU de AMD (ROCm)**,
+  así que **no viola el requisito de AMD** y además da acceso a un **premio extra de Google**.
+  El autor eligió **ir directo a montar Gemma**. Ojo: **Gemma NO está en el catálogo gratis**
+  de Radeon Cloud (9 modelos, ninguno Gemma) → hay que **alquilar una instancia GPU y
+  desplegarlo con vLLM**. Ver §8 y §9.
 
 Reglas del track Commerce (lablab.ai):
 - NO usar el LLM como único método de pronóstico. Usar Monte Carlo/estadística y explicar el cálculo.
@@ -49,7 +59,8 @@ Reglas del track Commerce (lablab.ai):
 
 - **Backend:** Python 3.10 + FastAPI. **Frontend:** React.
 - **Base de datos:** SQLite real (el autor pidió "base de datos de verdad").
-- **LLM:** TokenFactory de AMD, compatible OpenAI (`base_url` configurable). Un SOLO cliente.
+- **LLM:** un SOLO cliente, compatible con OpenAI (`base_url` configurable). Motor previsto:
+  **Gemma servido por AMD** (Radeon Cloud / AMD Developer Cloud). Ver §8.
 - **Docker:** Desktop ya instalado (v4.95.0). Falta generar Dockerfile + docker-compose (Fase 9).
 - **Licencia:** MIT. **Hosting:** Render (backend) + Netlify (frontend), el sábado.
 - **Git identity global ya configurada:** `Jose Mota <JoseMota0190@users.noreply.github.com>`,
@@ -132,35 +143,48 @@ porque el gerente **sube la conversión**. Pregunta del pitch: *"¿cómo vendo 5
 
 ## 6. ESTADO ACTUAL (lo que YA ESTÁ construido y PROBADO)
 
-Repo local en **`C:\Users\josem\projects\nexus-ops-ai`** (git inicializado).
-**Sin remote, sin push todavía** (autorizado, pero se sube recién en la entrega final).
-Rama en `master` (OJO: pendiente renombrar a `main` antes del push; autor lo decidió pero
-aún no se hizo).
+Repo local en **`C:\Users\josem\projects\nexus-ops-ai`** (git inicializado, rama **`main`**
+ya renombrada ✅). **Sin remote, sin push todavía** (autorizado; se sube en la entrega final).
 
 **✅ Fases 2 a 8 construidas y probadas** (ver detalle de fases más abajo):
 - `backend/store.py` — SQLite real (clientes, leads, llamadas, motivos, citas, técnicos,
-  decisiones del gerente, actas, resúmenes por día/mes).
+  decisiones del gerente, actas, resúmenes por día/mes) + `transaction()` que agrupa los
+  escritos (arranque 25 s → 3.4 s).
 - `backend/engine/business.py` — TODAS las constantes del negocio (precios, sueldos, tasas,
-  meta 10 técnicos, 220 leads/día, 50 llamadas/operador).
+  meta 10 técnicos, leads 180+40/mejora, 50 llamadas/operador, `MESES_AUTOMATICOS = 6`).
 - `backend/engine/leads.py` · `calls.py` · `agenda.py` · `technicians.py` · `gerente.py` ·
   `simulation.py` — la operación completa: leads → llamadas con motivo de fallo → agenda
   semanal (lun–sáb, turnos 9/12/16) → reparto de técnicos por algoritmo → reunión mensual
   del Gerente IA con validador + **red de seguridad transparente**.
-- `backend/api.py` — FastAPI completo: estado, resumenes, `/api/mes` (avanzar mes),
-  `/api/todo` (6 meses), `/api/dia`, `/api/reiniciar`, actas, llamadas, mensajes, mapa,
-  métricas AMD, `llamada_en_vivo`, `objetivos`, `escenario` (sliders).
+  El tope de contratación de técnicos usa las **ventas reales** del último mes (no el plan).
+- `backend/api.py` — FastAPI completo: estado, resumenes, `/api/mes`, `/api/todo`, `/api/dia`,
+  `/api/reiniciar`, actas, llamadas, mensajes, mapa, métricas AMD, `llamada_en_vivo`,
+  `objetivos`, `escenario` (sliders). **Al arrancar con la base vacía corre solo los primeros
+  6 meses.**
 - `frontend/` — pantalla del dueño en React + Vite: KPIs, sliders, escenarios, actas,
-  telégrafo de llamadas, motivos de fallo, agente vivo, panel AMD, **mapa CABA animado**.
-  `npm run build` compila; `npm run smoke` da **31/31 checks OK**.
+  telégrafo de llamadas, motivos de fallo, agente vivo, panel AMD (incluye contador de
+  **respaldos**), **mapa CABA animado**. `npm run build` compila; `npm run smoke` da
+  **31/31 checks** y **falla si algún pedido del backend no responde 200**.
+- `backend/llm/client.py` — **respaldo automático**: si el modelo de AMD falla o devuelve basura,
+  se usa la respuesta local y queda anotado como `fallback_calls` (el demo NUNCA se rompe).
+- `backend/tests/probar_amd.py` — **herramienta de conexión real**: lista el catálogo de modelos,
+  mide latencia y comprueba que el modelo devuelva el **JSON estructurado** que los agentes
+  necesitan. Correrla antes de prender el cerebro de verdad.
 - `docker-compose.yml` + `backend/Dockerfile` + `frontend/Dockerfile` + `nginx.conf` +
   `render.yaml` + `frontend/netlify.toml` + `scripts/dev.cmd`.
-- `backend/tests/` — **33 tests pasando**: `test_engine.py` (20), `test_llm.py` (5),
-  `test_api.py` (8) + `mirar_negocio.py` (tablero de los 9 meses).
+  **Docker verificado de punta a punta** (arranca, siembra 6 meses y el proxy de nginx anda).
+- `backend/tests/` — **36 tests**: `test_engine.py` (20), `test_llm.py` (6), `test_api.py` (10,
+  incluye barrido de TODOS los GET + el de sliders) + `mirar_negocio.py`.
 
 **Números verificados** (`mirar_negocio.py`): mes 1 → 6.7 ventas/día, 3 operadores,
 2 técnicos. Mes 9 → 32 ventas/día, 8 operadores, **10 técnicos (meta cumplida)**.
-Ingresos ×6.4 vs costos ×2.7 → **los costos crecen más lento que las ventas** (el argumento
-del pitch).
+Ingresos ×8.8 vs costos ×2.7 → **los costos crecen más lento que las ventas**.
+
+**Artefactos de entrega escritos:** `README.md` (que corre), `PITCH.md` (guion del video en
+inglés con subtítulos + textos de inscripción) y `SLIDES.md` (9 slides listas para pegar).
+
+**⚠️ Bug ya corregido:** `POST /api/escenario` (los sliders) devolvía **500** por un import
+faltante. Ahora hay test que barre todos los GET y prueba ese POST.
 
 **⚠️ El `leads.py` viejo (200–250/día, 8% "No Llame", 10 técnicos fijos) ya fue REARMADO**
 al modelo real del §3. No hay que rearmar nada más.
@@ -177,35 +201,101 @@ al modelo real del §3. No hay que rearmar nada más.
 6. ✅ **Hecha:** Gerente IA + reuniones mensuales + crecimiento a 10 técnicos.
 7. ✅ **Hecha:** Pantalla del dueño (KPIs, sliders, lead en vivo texto, mapa animado, métricas AMD).
 8. ✅ **Hecha:** Simulación por meses (6 solos + 3 a mano, con guardado en SQLite).
-9. 🟡 **EN CURSO →** Docker ✅ (**verificado de punta a punta**: `docker compose up --build`
-   arranca backend + frontend y la API responde), README que corra ✅, **guion del video/pitch
-   en inglés ✅ `PITCH.md`**. **Faltan:** deploy Render + Netlify (necesita cuentas del autor),
-   grabar el video, y subir a GitHub (rama ya renombrada `master` → `main`).
-   **Pendiente del autor:** catálogo de modelos de TokenFactory + login de `gh`.
+9. 🟡 **EN CURSO →** Docker ✅ verificado de punta a punta · README que corra ✅ ·
+   **guion del video en inglés ✅ `PITCH.md`** · **slides ✅ `SLIDES.md`** (9 slides).
+   **Faltan:** deploy Render + Netlify, grabar el video, subir a GitHub.
+   **Motor de AMD pendiente:** ver **§8** (checklist de retomada).
+
+> **⏸️ PAUSA DE RETOMADA (14 oct).** El desarrollo está **pausado a propósito**. Al volver,
+> **primero recorrer la checklist del §8 punto por punto**, y recién después seguir
+> desarrollando. No hay bugs abiertos: 36 tests + smoke en verde.
 
 **Recorte de emergencia si falta tiempo:** primero el mapa animado, luego extras. NUNCA recortar
 AMD, el envío ni el README.
 
 ---
 
-## 8. TAREAS EXTERNAS DEL AUTOR (gestiones que le tocan a él)
+## 8. CHECKLIST DE RETOMADA — hacerla 1 a 1 ANTES de seguir desarrollando
 
-- **Discord (hoy):** código de evento Evolus · compatibilidad Evolus↔TokenFactory (¿acepta el
-  endpoint de TokenFactory o exige vLLM propio?) · hora exacta de cierre domingo · permiso de
-  audio con voz clonada en el video.
-- **AMD TokenFactory:** abrir notebook, anotar CATÁLOGO de modelos de texto disponibles.
-- **Evolus:** cupón **AMDACT3 YA RECLAMADO**. Falta: crear workspace en `app.evolus.ai`,
-  conectar modelo, verificar endpoints en la referencia interactiva (AI Tools / Workflows).
-- **Hosting:** crear cuenta Render + Netlify (el sábado).
+> **⚠️ INSTRUCCIÓN PARA LA PRÓXIMA SESIÓN:** el autor pidió que, al volver, se recorra
+> **esta lista completa punto por punto ANTES de escribir o modificar cualquier código.**
+> NO empezar por tareas nuevas. Primero la lista, después se continúa.
+> Trabajo **pausado a propósito** el 14 oct: no hay bug abierto, todo verde (36 tests + smoke).
+
+### 1. 🔴 AMD — créditos de Developer Cloud (es el freno de Gemma)
+**Qué mira el autor:** la cuenta AMD con la que se anotó a la hackathon. Buscar en el **correo**
+algo de "AMD AI Developer Program" / "AMD Developer Cloud"; en la **página del evento en
+lablab.ai** (sponsors o aviso del 12 oct); y en el **Discord de anuncios**.
+**Qué busca:** un número — puede aparecer como *créditos*, *saldo*, *$100* o *horas de GPU*.
+Ojo con si le pide anotarse a un **"AMD AI League"** (otro participante reportó esa duda y
+nadie contestó todavía).
+**Qué devuelve:** el **texto exacto** que ve (o foto de pantalla). Si no ve nada → el
+asistente le arma una pregunta en inglés para el Discord.
+**Qué hace el asistente:** con el saldo, elegir la GPU; sin saldo, escalar por Discord.
+**Contexto:** TokenFactory quedó descartado (email no habilitado). **El motor será Gemma en una
+instancia GPU propia de AMD con vLLM.** El equipo de Evolus confirmó en el Discord que los
+agentes corren sobre *"your team's OpenAI-compatible endpoint (e.g. **vLLM on AMD Developer
+Cloud**)"* → **nuestro plan es exactamente el camino que recomiendan**.
+**Sin créditos no hay GPU → no hay Gemma.**
+**Decisión ya tomada:** el autor **espera a que esté la GPU de Gemma**. Mientras tanto el
+programa corre en **modo simulado** (`USE_MOCK=true`) y **NO** se cambia a ningún modelo
+interino. **Frente si los créditos no aparecen:** modelo del catálogo gratis de Radeon Cloud
+(corren en GPU de AMD, requisito cumplido) — **no cambiarlo sin preguntarle de nuevo**.
+**Riesgo:** Gemma no está en el catálogo gratis; requiere instancia + créditos + mantenerla viva
+el día de la demo. El cliente LLM **ya acepta cualquier endpoint compatible con OpenAI** (solo
+cambian 3 variables de entorno).
+**Ya preparado:** `backend/tests/probar_amd.py` verifica conexión real, latencia y **si el modelo
+devuelve el JSON estructurado** que los agentes necesitan. El default de `LLM_BASE_URL` ya apunta
+a Radeon Cloud; con la GPU solo se cambia a la URL de la instancia (p. ej. `/spaces/<id>/v1`).
+
+### 2. 🔴 GitHub — `gh auth login` (bloquea la entrega del repo)
+- **Qué hace el autor:** en una terminal de Windows correr
+  `gh auth login --hostname github.com --git-protocol https --web`,
+  pegar el código de 8 letras en el navegador y apretar **Authorize**.
+- **Qué hace el asistente:** crear el repo **PÚBLICO** y pushear `main`.
+- Su GitHub: **JoseMota0190**. Rama ya renombrada a `main` ✅.
+
+### 3. 🟠 Evolus — workspace DESDE el link oficial del evento (gratis)
+- **Trampa:** **NO** crearlo entrando derecho a `app.evolus.ai`. Ellos avisaron que un workspace
+  hecho por cuenta propia **antes del 12 oct no vale como workspace del evento**.
+- **Qué hace el autor:** encontrar en el **Discord o la web de Evolus** el **link oficial del
+  evento** (publicado desde el 12 oct) y crear el workspace desde ahí.
+- **Qué tiene que dar:** 50.000 créditos · gratis hasta **15 nov 2026 23:59 (hora italiana)** ·
+  hasta 6 integrantes · **Evolus Studio** (app de escritorio Win/Mac/Linux).
+  **Los llamados a nuestro modelo NO gastan créditos** (los de Evolus sí).
+- **Qué devuelve:** la **URL del workspace**.
+- **Qué hace el asistente:** verificar endpoints (AI Tools / Workflows) y conectar el modelo.
+
+### 4. 🟡 Hosting — Render + Netlify (cuentas)
+- **Qué hace el autor:** crear la cuenta con su correo: **Render** (`render.com`) y
+  **Netlify** (`netlify.com`).
+- **Qué hace el asistente:** el deploy (Render lee `render.yaml`; Netlify usa `frontend/` y hay
+  que editar la URL del backend en `netlify.toml`).
+
+### 5. 🟡 Discord — preguntas todavía sin contestar
+Ya mandó la consulta por el bloqueo de TokenFactory. **Faltan:**
+- **Créditos de AMD** (ver punto 1): ¿reclamarlos dónde? ¿sirve el "AMD AI League"?
+- **¿Radeon Cloud cuenta como "AMD"** para el requisito de elegibilidad?
+- Hora exacta de **cierre domingo**.
+- Permiso de **audio con voz clonada** en el video.
+- Código de **evento Evolus**.
+
+### 6. 🟢 Pendientes de más adelante
+- **Grabar el video** siguiendo `PITCH.md` (inglés + subtítulos).
+- **Desplegar Gemma con vLLM** cuando haya GPU → cambiar `LLM_BASE_URL` + `LLM_MODEL` +
+  `USE_MOCK=false` → correr `backend/tests/probar_amd.py`.
 
 ---
 
 ## 9. Decisiones CERRADAS (NO volver a preguntar)
 
 Empresa "Nexus Alarm" · proyecto nexus-ops-ai · Python/FastAPI + React · SQLite · MIT ·
-TokenFactory · Evolus extractor+workflow aislado · **sin auditor visual** (facturas con errores
-Monte Carlo para Evolus) · lead en vivo solo texto · **CON mapa animado** (primer corte si falta
-tiempo) · Google descartado · **solo ARCA simulado, NO hay "No Llame"** (todos los leads son de
+**motor: Gemma servido por AMD** (TokenFactory descartado por bloqueo del email, 14 oct) ·
+**esperar a la GPU de Gemma y NO usar modelo interino** (frente si no hay créditos: modelo
+gratis del catálogo de Radeon Cloud, que corre sobre GPU de AMD) · Evolus extractor+workflow
+aislado, workspace creado **desde el link oficial del evento** · **sin auditor visual**
+(facturas con errores Monte Carlo para Evolus) · lead en vivo solo texto · **CON mapa animado**
+(primer corte si falta tiempo) · **solo ARCA simulado, NO hay "No Llame"** (todos los leads son de
 la web que pide ser llamado, sin llamada en frío) · 2 técnicos + 3 operadores arranque ·
 10 técnicos meta mes 9 · lunes a sábados · 3 turnos (9am/12pm/4pm) · ventas semana siguiente ·
 50 llamadas/operador/día (150 total, fluctúa) · 6 ventas/día arranque · reparto: programa

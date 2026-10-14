@@ -26,8 +26,9 @@ services:
       # LLM_API_KEY y LLM_MODEL (se setean desde el panel de Render, sin commitear).
       - key: USE_MOCK
         value: "true"
+      # AMD Radeon Cloud: endpoints compatibles con OpenAI, gratis y sin aprobación.
       - key: LLM_BASE_URL
-        value: "https://notebooks.amd.com/tokenfactory/v1"
+        value: "https://developer.amd.com.cn/radeon/api/v1"
       - key: LLM_API_KEY
         sync: false          # lo cargás a mano en el panel de Render
       - key: LLM_MODEL
