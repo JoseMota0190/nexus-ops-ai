@@ -27,7 +27,11 @@ from engine.business import (
     MESES_TOTALES,
     SEMANAS_POR_MES,
 )
-from engine.gerente import ventas_objetivo_del_mes, tecnicos_objetivo_del_mes
+from engine.gerente import (
+    tecnicos_objetivo_del_mes,
+    ventas_objetivo_del_mes,
+    ventas_potenciales,
+)
 from engine.leads import generar_leads
 
 import os

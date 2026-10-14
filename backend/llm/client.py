@@ -22,6 +22,7 @@ Garantías:
 from __future__ import annotations
 
 import json
+import logging
 import random
 import time
 from typing import Any, Type, TypeVar
@@ -34,6 +35,7 @@ from .config import LLMConfig, get_config
 from .metrics import CallRecord, MetricsStore, get_metrics
 
 T = TypeVar("T", bound=BaseModel)
+_log = logging.getLogger("nexus.llm")
 
 
 class LLMError(Exception):
@@ -52,13 +54,29 @@ class LLMClient:
     # ------------------------------------------------------------------ API
     def complete(self, agent: str, messages: list[dict[str, str]],
                  schema: Type[T]) -> T:
-        """Devuelve una instancia validada del esquema `schema`."""
-        raw = self._raw_complete(agent, messages)
-        return self._validate(agent, raw, schema)
+        """Devuelve una instancia validada del esquema `schema`.
+
+        Si el cerebro real (AMD) falla o devuelve basura, NO se rompe la demo:
+        se cae a la respuesta de respaldo y queda anotado en las métricas
+        como `fallback_calls` (transparencia, no un truco).
+        """
+        try:
+            return self._validate(agent, self._raw_complete(agent, messages), schema)
+        except LLMError as e:
+            if self.config.use_mock or self.replay:
+                raise  # en mock el error es real (bug), no lo tapamos
+            _log.warning("AMD/TokenFactory no respondió (%s) -> respaldo local", e)
+            return self._validate(agent, self._complete_fallback(agent, messages), schema)
 
     def complete_json(self, agent: str, messages: list[dict[str, str]]) -> str:
         """Solo el JSON crudo (útil para cacheo y debugging)."""
-        return self._raw_complete(agent, messages)
+        try:
+            return self._raw_complete(agent, messages)
+        except LLMError as e:
+            if self.config.use_mock or self.replay:
+                raise
+            _log.warning("AMD/TokenFactory no respondió (%s) -> respaldo local", e)
+            return self._complete_fallback(agent, messages)
 
     # ------------------------------------------------------------- interno
     def _raw_complete(self, agent: str, messages: list[dict[str, str]]) -> str:
@@ -79,8 +97,14 @@ class LLMClient:
 
         return self._complete_network(agent, messages, model)
 
+    def _complete_fallback(self, agent: str,
+                           messages: list[dict[str, str]]) -> str:
+        """Respuesta de respaldo cuando el cerebro real no respondió."""
+        return self._complete_mock(agent, messages,
+                                   self.config.model or "mock", fallback=True)
+
     def _complete_mock(self, agent: str, messages: list[dict[str, str]],
-                       model: str) -> str:
+                       model: str, fallback: bool = False) -> str:
         t0 = time.perf_counter()
         if agent == "teleoperador":
             data = _mock.teleoperador_mock(messages, self._rng)
@@ -95,9 +119,12 @@ class LLMClient:
             raise LLMError(f"Agente mock desconocido: {agent!r}")
         dt = (time.perf_counter() - t0) * 1000.0
         out = json.dumps(data, ensure_ascii=False)
-        _cache.put(agent, model, messages, out)
+        if not fallback:
+            # No se cachea una respuesta de respaldo con el nombre del modelo
+            # real: eso dejaría disfrazado de "real" a un fallo repetido.
+            _cache.put(agent, model, messages, out)
         self._record(agent, model, dt, len(out) // 4, len(out) // 4,
-                     ok=True, mock=True, cached=False)
+                     ok=True, mock=True, cached=False, fallback=fallback)
         return out
 
     def _complete_network(self, agent: str, messages: list[dict[str, str]],
@@ -145,9 +172,9 @@ class LLMClient:
 
     def _record(self, agent: str, model: str, latency_ms: float,
                 prompt_tk: int, comp_tk: int, ok: bool, mock: bool,
-                cached: bool) -> None:
+                cached: bool, fallback: bool = False) -> None:
         self.metrics.record(CallRecord(
             ts=time.time(), agent=agent, model=model, latency_ms=latency_ms,
             prompt_tokens=prompt_tk, completion_tokens=comp_tk,
-            ok=ok, mock=mock, cached=cached,
+            ok=ok, mock=mock, cached=cached, fallback=fallback,
         ))

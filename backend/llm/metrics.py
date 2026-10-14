@@ -23,6 +23,9 @@ class CallRecord:
     ok: bool
     mock: bool
     cached: bool = False
+    # True cuando la llamada real falló y se sirvió la respuesta de respaldo
+    # (mock). El panel lo muestra aparte para que no se oculte ningún problema.
+    fallback: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -55,6 +58,7 @@ class MetricsStore:
         errors = sum(1 for c in calls if not c.ok)
         mocks = sum(1 for c in calls if c.mock)
         cached = sum(1 for c in calls if c.cached)
+        fallbacks = sum(1 for c in calls if c.fallback)
 
         def pct(p: float) -> float:
             if not lat:
@@ -76,6 +80,7 @@ class MetricsStore:
             "errors": errors,
             "mock_calls": mocks,
             "cached_calls": cached,
+            "fallback_calls": fallbacks,
             "prompt_tokens": prompt_tk,
             "completion_tokens": comp_tk,
             "latency_p50_ms": pct(0.50),

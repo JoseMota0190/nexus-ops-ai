@@ -134,6 +134,14 @@ lineas.push(`\nPedidos al backend: ${llamadasFetch.length} · OK 200: ${exitos}`
 lineas.push(`URLs probadas: ${llamadasFetch.map((l) => l.url.replace("http://", "")).slice(0, 6).join(" | ")}`);
 lineas.push(`Endpoints tocados: ${urlsVistas.join(", ")}`);
 
+// Ningún pedido puede fallar: un 500 en un botón rompe la demo en vivo.
+if (exitos !== llamadasFetch.length) {
+  const malos = llamadasFetch.filter((l) => l.status !== 200);
+  mal++;
+  lineas.push(`FALLA: ${malos.length} de ${llamadasFetch.length} pedidos NO respondieron 200`);
+  malos.slice(0, 8).forEach((l) => lineas.push(`  · ${l.status} ${l.url}`));
+}
+
 const salida = lineas.join("\n") + "\n";
 writeFileSync(new URL("./smoke-result.txt", import.meta.url), salida, "utf8");
 const fallos = mal > 0 || relevantes.length > 0 ? 1 : 0;

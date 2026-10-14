@@ -61,6 +61,9 @@ export default function MetricasAMD({ metricas, cargando, error }) {
             <span>
               · De caché: <strong>{num(metricas.cached_calls ?? 0)}</strong>
             </span>
+            <span>
+              · Respaldos: <strong>{num(metricas.fallback_calls ?? 0)}</strong>
+            </span>
           </div>
 
           {metricas.base_url ? (

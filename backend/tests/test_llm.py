@@ -76,10 +76,33 @@ def test_metricas_se_registran():
     assert get_metrics().total_calls() > 0
 
 
+def test_amd_no_responde_no_rompe_la_demo():
+    """Si TokenFactory está caído o la key está mal, la demo NO se rompe.
+
+    El cliente cae en la respuesta de respaldo y lo anota en las métricas
+    (fallback_calls + errors), sin ocultar el problema.
+    """
+    from llm.config import LLMConfig as C
+
+    c = LLMClient(config=C(use_mock=False, base_url="http://127.0.0.1:9/v1",
+                            api_key="clave-mala", model="no-existe",
+                            max_retries=0, timeout_s=0.5))
+    antes = get_metrics().summary()
+    resp = c.complete(agent="teleoperador",
+                      messages=[{"role": "user",
+                                 "content": "Quiero una alarma en Colegiales, ¿cuánto sale?"}],
+                      schema=TeleoperadorResponse)
+    assert isinstance(resp, TeleoperadorResponse)
+    despues = get_metrics().summary()
+    assert despues.get("fallback_calls", 0) > antes.get("fallback_calls", 0)
+    assert despues.get("errors", 0) > antes.get("errors", 0)
+
+
 if __name__ == "__main__":
     test_teleoperador_urgente_cierra_cita()
     test_teleoperador_fuera_de_caba()
     test_despacho_trafico_reasigna()
     test_json_invalido_lanza_error()
     test_metricas_se_registran()
-    print("OK: 5 tests del cliente LLM pasaron.")
+    test_amd_no_responde_no_rompe_la_demo()
+    print("OK: 6 tests del cliente LLM pasaron.")

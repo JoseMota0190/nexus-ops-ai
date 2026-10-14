@@ -84,6 +84,36 @@ def test_reiniciar_vuelve_al_inicio():
     assert d["tecnicos"] == 2
 
 
+def test_todos_los_get_de_la_pantalla_responden():
+    """Barrido: si la pantalla usa un endpoint, tiene que responder 200."""
+    from api import app
+
+    rutas = [r.path for r in app.routes
+             if getattr(r, "methods", None) and "GET" in r.methods
+             and r.path.startswith("/api")]
+    assert len(rutas) >= 8, rutas
+    for ruta in rutas:
+        resp = client.get(ruta)
+        assert resp.status_code == 200, f"{ruta} -> {resp.status_code}: {resp.text[:200]}"
+
+
+def test_escenario_sliders_calcula():
+    """'¿Qué pasa si…?' — el botón de las palancas no puede devolver error."""
+    r = client.post("/api/escenario",
+                    json={"operadores": 8, "tecnicos": 6, "mejoras": 3})
+    assert r.status_code == 200, r.text
+    d = r.json()
+    assert d["ventas_por_dia"] > 0
+    assert d["costos_mes"] > 0
+    assert "balance_mes" in d
+    assert d["meta_cumplida"] is False
+
+    # Con la meta completa, el indicador tiene que encenderse.
+    lleno = client.post("/api/escenario",
+                        json={"operadores": 8, "tecnicos": 10, "mejoras": 4}).json()
+    assert lleno["meta_cumplida"] is True
+
+
 if __name__ == "__main__":
     test_estado_inicial()
     test_avanzar_mes_devuelve_acta_y_numeros()
@@ -93,4 +123,6 @@ if __name__ == "__main__":
     test_metricas_amd()
     test_objetivos_9_meses()
     test_reiniciar_vuelve_al_inicio()
-    print("OK: 8 tests de la API pasaron.")
+    test_todos_los_get_de_la_pantalla_responden()
+    test_escenario_sliders_calcula()
+    print("OK: 10 tests de la API pasaron.")
