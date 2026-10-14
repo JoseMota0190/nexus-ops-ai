@@ -88,6 +88,14 @@ class Simulacion:
 
     # ------------------------------------------------------------------ día
     def correr_dia(self) -> dict:
+        """Un día de operación entero, guardado en la base de UN SOLO golpe.
+
+        (Agruparlo hace que el arranque pase de 25 s a ~1 s; ver Store.transaction.)
+        """
+        with self.store.transaction():
+            return self._correr_dia()
+
+    def _correr_dia(self) -> dict:
         e = self.empresa
         semana, dia = e.semana, e.dia_semana
 
@@ -133,7 +141,6 @@ class Simulacion:
             self.store.conn.execute(
                 "UPDATE llamadas SET venta_id = ? WHERE cliente_id = ? AND semana = ? AND dia = ?",
                 (venta_id, cliente_id, semana, dia))
-            self.store.conn.commit()
 
         # 6) Costos del día (cada lead que llega cuesta plata de marketing).
         costo = costo_leads(len(leads))

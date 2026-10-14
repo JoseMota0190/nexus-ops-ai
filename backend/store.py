@@ -7,6 +7,7 @@ Todo lo que corre la simulación queda acá, así se puede parar y seguir despu�
 from __future__ import annotations
 
 import sqlite3
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
@@ -164,17 +165,39 @@ class Store:
         self.conn.execute("PRAGMA journal_mode=WAL")
         self.conn.executescript(SCHEMA)
         self.conn.commit()
+        self._tx = 0  # profundidad de la transacción abierta (ver transaction())
 
     # ------------------------------------------------------------ helpers
     def close(self) -> None:
         self.conn.close()
+
+    @contextmanager
+    def transaction(self):
+        """Agrupa muchos escritos en UN SOLO guardado al disco.
+
+        Guardar cada escritura por separado cuesta ~0.35 ms en Windows (fsync);
+        con 6.000 escrituras por mes eso eran 25 segundos de arranque.
+        Adentro de este bloque no se guarda nada hasta el final.
+        """
+        self._tx += 1
+        try:
+            yield
+        except BaseException:
+            if self._tx == 1:
+                self.conn.rollback()
+            raise
+        finally:
+            self._tx -= 1
+        if self._tx == 0:
+            self.conn.commit()
 
     def _exec(self, sql: str, params: Iterable[Any] | dict = ()) -> sqlite3.Cursor:
         if isinstance(params, dict):
             cur = self.conn.execute(sql, params)
         else:
             cur = self.conn.execute(sql, tuple(params))
-        self.conn.commit()
+        if self._tx == 0:
+            self.conn.commit()
         return cur
 
     def reset(self) -> None:

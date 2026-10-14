@@ -15,6 +15,10 @@ from api import app  # noqa: E402
 
 client = TestClient(app)
 
+# Arranca de fábrica: los 6 primeros meses se corrigen solos al importar la API,
+# así que los tests parten de un reinicio limpio (mes 1).
+client.post("/api/reiniciar")
+
 
 def test_estado_inicial():
     r = client.get("/api/estado")

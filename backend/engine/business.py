@@ -49,6 +49,9 @@ VENTAS_POR_OPERADOR_DIA = 2          # => 6 ventas/día con 3 operadores
 DIAS_POR_SEMANA = 6                  # lunes a sábado
 SEMANAS_POR_MES = 4                  # => 9 meses = 36 semanas = 216 días hábiles
 MESES_TOTALES = 9
+# Los primeros 6 meses corren solos al arrancar; los 3 últimos los mueve el dueño
+# con el botón "Avanzar 1 mes" (decisión cerrada con el autor).
+MESES_AUTOMATICOS = 6
 INSTALACIONES_POR_TECNICO_DIA = 3    # 9am / 12pm / 4pm
 TURNO_MANANA = "9am"
 TURNO_MEDIO = "12pm"

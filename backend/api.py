@@ -21,7 +21,12 @@ from schemas import TeleoperadorResponse
 from store import Store
 
 from engine import Simulacion, ZONAS
-from engine.business import DIAS_POR_SEMANA, MESES_TOTALES, SEMANAS_POR_MES
+from engine.business import (
+    DIAS_POR_SEMANA,
+    MESES_AUTOMATICOS,
+    MESES_TOTALES,
+    SEMANAS_POR_MES,
+)
 from engine.gerente import ventas_objetivo_del_mes, tecnicos_objetivo_del_mes
 from engine.leads import generar_leads
 
@@ -42,6 +47,10 @@ store = Store(DATA)
 llm = LLMClient()
 sim = Simulacion(store, llm)
 sim.inicializar()
+# Primera vez que arranca (base recién creada) → corren solos los primeros 6 meses,
+# como quedó decidido. Los 3 últimos los mueve el dueño con "Avanzar 1 mes".
+if not store.conn.execute("SELECT 1 FROM resumen_mes LIMIT 1").fetchone():
+    sim.correr_todo(MESES_AUTOMATICOS)
 _rng = random.Random(2026)
 
 
