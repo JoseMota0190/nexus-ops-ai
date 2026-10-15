@@ -7,6 +7,7 @@ import Evolucion from "./components/Evolucion.jsx";
 import Acta from "./components/Acta.jsx";
 import { LogLlamadas, Motivos } from "./components/Llamadas.jsx";
 import AgenteVivo from "./components/AgenteVivo.jsx";
+import DetalleDia from "./components/DetalleDia.jsx";
 import MetricasAMD from "./components/MetricasAMD.jsx";
 import MapaCaba from "./components/MapaCaba.jsx";
 
@@ -28,6 +29,7 @@ export default function App() {
   const [cargandoPesado, setCargandoPesado] = useState(true);
   const [ocupado, setOcupado] = useState(null);
   const [aviso, setAviso] = useState(null);
+  const [detalleDia, setDetalleDia] = useState(null); // resumen del último día corrido
 
   const vivo = useRef(true);
   const avisoTimer = useRef(null);
@@ -96,7 +98,7 @@ export default function App() {
 
   // ------------------------------------------------------------- acciones
   async function correr(que, funcion, mensajeOk) {
-    if (ocupado) return;
+    if (ocupado) return undefined;
     setOcupado(que);
     setAviso(null);
     try {
@@ -107,8 +109,10 @@ export default function App() {
           : "";
       mostrarAviso("ok", mensajeOk + extra);
       await refrescarTodo();
+      return r;
     } catch (e) {
       mostrarAviso("error", e.message);
+      return undefined;
     } finally {
       setOcupado(null);
     }
@@ -116,6 +120,18 @@ export default function App() {
 
   const avanzarMes = () =>
     correr("mes", api.avanzarMes, "Listo: el mes se corrió y el Gerente IA dejó su acta.");
+
+  // Un día entero: el detalle queda a la vista para la demo (lo pidió el autor
+  // para que los jueces vean la simulación al detalle).
+  async function avanzarDia() {
+    const r = await correr(
+      "dia",
+      api.avanzarDia,
+      "Día corrido: mirá el detalle justo abajo.",
+    );
+    if (r && typeof r === "object" && r.leads !== undefined) setDetalleDia(r);
+  }
+
   const correrSeis = () =>
     correr("seis", () => api.correrTodo(6), "¡Seis meses corridos de una!");
   const reiniciar = () => {
@@ -157,6 +173,7 @@ export default function App() {
         cargando={cargandoEstado}
         ocupado={ocupado}
         onAvanzar={avanzarMes}
+        onAvanzarDia={avanzarDia}
         onCorrerSeis={correrSeis}
         onReiniciar={reiniciar}
       />
@@ -176,6 +193,8 @@ export default function App() {
       ) : null}
 
       <Kpis estado={estado} />
+
+      <DetalleDia detalle={detalleDia} />
 
       <section className="paneles">
         <Escenario estado={estado} />

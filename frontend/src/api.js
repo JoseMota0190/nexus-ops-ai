@@ -94,6 +94,7 @@ export const api = {
   escenario: (datos) => pedir("/api/escenario", { method: "POST", body: cuerpo(datos) }),
   llamadaEnVivo: () => pedir("/api/llamada_en_vivo", { method: "POST", body: "{}" }),
   avanzarMes: () => pedir("/api/mes", { method: "POST", body: "{}" }),
+  avanzarDia: () => pedir("/api/dia", { method: "POST", body: "{}" }),
   correrTodo: (meses = 6) => pedir(`/api/todo?meses=${meses}`, { method: "POST", body: "{}" }),
   reiniciar: () => pedir("/api/reiniciar", { method: "POST", body: "{}" }),
 };

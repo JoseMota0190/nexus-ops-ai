@@ -85,6 +85,8 @@ const chequeos = [
   ["meta del dueño", tiene("Meta del dueño: 10 técnicos para el mes 9")],
   ["mes/semana", tiene("Mes") && tiene("Semana")],
   ["botón avanzar", tiene("Avanzar 1 mes")],
+  ["botón día", tiene("Avanzar 1 día")],
+  ["panel detalle del día", tiene("Un día de la operación, al detalle")],
   ["botón 6 meses", tiene("Correr 6 meses de una")],
   ["botón reiniciar", tiene("Reiniciar")],
   ["KPI ventas por día", tiene("Ventas por día")],

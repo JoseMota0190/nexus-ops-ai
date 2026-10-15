@@ -7,6 +7,7 @@ export default function Cabecera({
   cargando,
   ocupado,
   onAvanzar,
+  onAvanzarDia,
   onCorrerSeis,
   onReiniciar,
 }) {
@@ -68,6 +69,14 @@ export default function Cabecera({
           disabled={!!ocupado || terminado || cargando}
         >
           {ocupado === "mes" ? "Corriendo el mes…" : "Avanzar 1 mes"}
+        </button>
+        <button
+          className="boton boton-secundario"
+          onClick={onAvanzarDia}
+          disabled={!!ocupado || terminado || cargando}
+          title="Corre un día entero de operación y muestra el detalle abajo"
+        >
+          {ocupado === "dia" ? "Corriendo el día…" : "Avanzar 1 día"}
         </button>
         <button
           className="boton boton-secundario"

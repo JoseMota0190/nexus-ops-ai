@@ -23,8 +23,8 @@
 # En producción la llamada /api/* se redirige al backend de Render.
 [[redirects]]
   from = "/api/*"
-  # ⬇⬇⬇ CAMBIAR por la URL real del backend en Render ⬇⬇⬇
-  to = "https://nexus-ops-ai.onrender.com/api/*"
+  # URL real del backend en Render (la que quedó publicada).
+  to = "https://nexus-ops-ai-backend.onrender.com/api/*"
   status = 200
   force = true
 
