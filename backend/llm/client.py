@@ -33,6 +33,7 @@ from . import cache as _cache
 from . import mock as _mock
 from .config import LLMConfig, get_config
 from .metrics import CallRecord, MetricsStore, get_metrics
+from .prompts import descripcion_esquema, mensajes_de_agente
 
 T = TypeVar("T", bound=BaseModel)
 _log = logging.getLogger("nexus.llm")
@@ -56,10 +57,16 @@ class LLMClient:
                  schema: Type[T]) -> T:
         """Devuelve una instancia validada del esquema `schema`.
 
+        Antes de mandar al modelo, agrega automáticamente:
+        - El preámbulo de simulación (para que no se niegue a hacer el rol).
+        - La descripción de los campos del esquema (para que devuelva el
+          JSON con la forma correcta).
+
         Si el cerebro real (AMD) falla o devuelve basura, NO se rompe la demo:
         se cae a la respuesta de respaldo y queda anotado en las métricas
         como `fallback_calls` (transparencia, no un truco).
         """
+        messages = self._preparar_prompt(messages, schema)
         try:
             return self._validate(agent, self._raw_complete(agent, messages), schema)
         except LLMError as e:
@@ -68,8 +75,10 @@ class LLMClient:
             _log.warning("AMD/TokenFactory no respondió (%s) -> respaldo local", e)
             return self._validate(agent, self._complete_fallback(agent, messages), schema)
 
-    def complete_json(self, agent: str, messages: list[dict[str, str]]) -> str:
+    def complete_json(self, agent: str, messages: list[dict[str, str]],
+                      schema: Type[T]) -> str:
         """Solo el JSON crudo (útil para cacheo y debugging)."""
+        messages = self._preparar_prompt(messages, schema)
         try:
             return self._raw_complete(agent, messages)
         except LLMError as e:
@@ -77,6 +86,23 @@ class LLMClient:
                 raise
             _log.warning("AMD/TokenFactory no respondió (%s) -> respaldo local", e)
             return self._complete_fallback(agent, messages)
+
+    def _preparar_prompt(self, messages: list[dict[str, str]],
+                          schema: Type[T]) -> list[dict[str, str]]:
+        """Pega el prefijo de simulación y la descripción del esquema al system."""
+        out = mensajes_de_agente(messages)
+        desc = descripcion_esquema(schema)
+        if not desc:
+            return out
+        # Encontrar el system y agregarle la descripción del esquema.
+        for m in out:
+            if m.get("role") == "system":
+                m["content"] = m["content"] + "\n" + desc
+                return out
+        # Si no había system (mensajes_de_agente siempre agrega uno, pero por
+        # las dudas), prepender uno.
+        out.insert(0, {"role": "system", "content": desc})
+        return out
 
     # ------------------------------------------------------------- interno
     def _raw_complete(self, agent: str, messages: list[dict[str, str]]) -> str:

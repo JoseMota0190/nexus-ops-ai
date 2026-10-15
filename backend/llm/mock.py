@@ -122,19 +122,21 @@ def teleoperador_mock(messages: list[dict[str, str]], rng: random.Random) -> dic
             "motivo": "Cierre de venta en la llamada.",
         }
 
+    # Lead cálido/tibio pero NO se cerró en la llamada: el calor del lead
+    # sigue siendo CALIDO/TIBIO (no NO_COMPRA, que es otra cosa).
     return {
         "reply_text": (
             f"Dejame tu número y te paso la info. {f'Te queda bien {horario}?' if horario else ''}"
         ).strip(),
-        "calificacion": Calificacion.NO_COMPRA.value,
+        "calificacion": calif.value,
         "direccion_valida_caba": True,
         "barrio": barrio,
         "propone_horario": horario,
         "cierra_cita": False,
         "producto": None,
-        "motivo_no_compra": elegir_motivo(rng),
-        "requiere_visita_humana": False,
-        "motivo": "Atendió pero no compró.",
+        "motivo_no_compra": "",
+        "requiere_visita_humana": True,
+        "motivo": "Lead interesado pero no cerró en la llamada.",
     }
 
 

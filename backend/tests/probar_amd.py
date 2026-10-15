@@ -40,6 +40,15 @@ def _ambar(t: str) -> str:
     return f"\033[33m{t}\033[0m"
 
 
+def _seguro(t: str) -> str:
+    """Recorta caracteres que la consola de Windows no puede escribir.
+
+    El modelo a veces devuelve flechas u otros símbolos; si la consola es
+    cp1252, imprimirlos revienta la prueba. Acá los reemplazamos.
+    """
+    return t.encode("cp1252", "replace").decode("cp1252")
+
+
 def listar_modelos(base_url: str, key: str) -> list[str] | None:
     import httpx
     try:
@@ -96,12 +105,12 @@ def main() -> int:
         )
         dt = (time.perf_counter() - t0) * 1000
         if r.status_code != 200:
-            print(f"  {_rojo('FALLÓ')} HTTP {r.status_code}: {r.text[:400]}")
+            print(_seguro(f"  {_rojo('FALLÓ')} HTTP {r.status_code}: {r.text[:400]}"))
             return 1
         txt = r.json()["choices"][0]["message"]["content"]
-        print(f"  {_verde('OK')} en {dt:.0f} ms → {txt.strip()[:120]!r}")
+        print(_seguro(f"  {_verde('OK')} en {dt:.0f} ms -> {txt.strip()[:120]!r}"))
     except Exception as e:  # noqa: BLE001
-        print(f"  {_rojo('FALLÓ')} {type(e).__name__}: {e}")
+        print(_seguro(f"  {_rojo('FALLÓ')} {type(e).__name__}: {e}"))
         return 1
 
     print("\n--- 3) Respuesta estructurada (la que usan los agentes) ---")
@@ -119,13 +128,13 @@ def main() -> int:
             schema=TeleoperadorResponse,
         )
         dt = (time.perf_counter() - t0) * 1000
-        print(f"  {_verde('OK')} el modelo devolvió JSON válido en {dt:.0f} ms")
-        print(f"     barrio     : {resp.barrio}")
+        print(_seguro(f"  {_verde('OK')} el modelo devolvió JSON válido en {dt:.0f} ms"))
+        print(_seguro(f"     barrio     : {resp.barrio}"))
         print(f"     calificación: {resp.calificacion}")
         print(f"     dirección CABA: {resp.direccion_valida_caba}")
     except Exception as e:  # noqa: BLE001
         print(f"  {_rojo('FALLÓ')} el modelo no supo responder en el formato que los agentes")
-        print(f"     necesitan: {type(e).__name__}: {str(e)[:300]}")
+        print(_seguro(f"     necesitan: {type(e).__name__}: {str(e)[:300]}"))
         print("     Prueba con otro modelo del catálogo (el más grande suele ir mejor).")
         return 1
 
