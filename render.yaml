@@ -29,10 +29,8 @@ services:
       # AMD Radeon Cloud: endpoints compatibles con OpenAI, gratis y sin aprobación.
       - key: LLM_BASE_URL
         value: "https://developer.amd.com.cn/radeon/api/v1"
-      - key: LLM_API_KEY
-        generateValue: false
-      - key: LLM_MODEL
-        generateValue: false
+      # LLM_API_KEY y LLM_MODEL NO se listan acá a propósito: se cargan a mano
+      # desde el panel de Render (Environment), así la clave nunca se commitea.
       - key: LLM_MAX_RETRIES
         value: "2"
       - key: LLM_TIMEOUT_S
