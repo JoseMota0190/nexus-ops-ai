@@ -2,8 +2,8 @@
 # Render — Blueprint para publicar el BACKEND (gratis, free tier).
 #
 # Cómo publicar:
-#   1. Subir el proyecto a GitHub (cuando el autor diga).
-#   2. En app.onrender.com: "New" -> "Blueprint".
+#   1. Subir el proyecto a GitHub.
+#   2. En dashboard.render.com: "New" -> "Blueprint".
 #   3. Elegir el repo. Render lee este archivo solo y crea el servicio.
 #
 # El FRONTEND va en Netlify (ver frontend/netlify.toml).
@@ -19,7 +19,7 @@ services:
     startCommand: uvicorn api:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/estado
     autoDeploy: true
-
+    plan: free
     envVars:
       # Mock por defecto para que la demo corra sin gastar créditos AMD.
       # Para prender el cerebro AMD de verdad: cambiar a "false" y completar
@@ -30,26 +30,12 @@ services:
       - key: LLM_BASE_URL
         value: "https://developer.amd.com.cn/radeon/api/v1"
       - key: LLM_API_KEY
-        sync: false          # lo cargás a mano en el panel de Render
+        generateValue: false
       - key: LLM_MODEL
-        sync: false
+        generateValue: false
       - key: LLM_MAX_RETRIES
         value: "2"
       - key: LLM_TIMEOUT_S
         value: "30"
       # NEXUS_DB queda sin definir a propósito: la base se crea en backend/data/
       # dentro del repo, que sí es escribible en el plan gratis de Render.
-
-    # --------------------------------------------------------
-    # DISCO PERSISTENTE (guarda la base entre reinicios/redeploys).
-    # OJO: los planes gratis de Render NO aceptan discos.
-    # La demo anda igual sin disco: al arrancar se regenera sola
-    # (los primeros 6 meses corren automáticamente).
-    # Si más adelante pagás un plan, descomentar:
-    #
-    # disk:
-    #   name: nexus-data
-    #   mountPath: /app/data
-    #   sizeGB: 1
-    #   # y agregar:  - key: NEXUS_DB   value: "/app/data/nexus.db"
-    # --------------------------------------------------------
