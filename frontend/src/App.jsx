@@ -9,6 +9,7 @@ import AgenteVivo from "./components/AgenteVivo.jsx";
 import DetalleDia from "./components/DetalleDia.jsx";
 import MetricasAMD from "./components/MetricasAMD.jsx";
 import MapaCaba from "./components/MapaCaba.jsx";
+import Logo from "./components/Logo.jsx";
 import TiraFin from "./components/TiraFin.jsx";
 import MenuLateral from "./components/MenuLateral.jsx";
 import PanelModal from "./components/PanelModal.jsx";
@@ -340,6 +341,7 @@ export default function App() {
         {/* El logo de Nexus, respirando en el centro del mapa. */}
         <div className="logo-centro" aria-hidden="true">
           <div className="logo-caja">
+            <Logo tamano={82} className="logo-mark" />
             <div className="logo-nombre">
               NEXUS<span>ALARM</span>
             </div>

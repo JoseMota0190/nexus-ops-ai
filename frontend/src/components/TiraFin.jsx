@@ -1,3 +1,5 @@
+import Logo from "./Logo.jsx";
+
 /**
  * La tira de arriba: la marca y, a la derecha, el botón del menú ☰.
  *
@@ -8,7 +10,7 @@ export default function TiraFin({ usuario, corriendo, onMenu, menuAbierto }) {
   return (
     <header className="tira">
       <div className="tira-marca">
-        <span className="tira-logo">N</span>
+        <Logo tamano={26} />
         <span className="tira-nombre">
           Nexus <b>Alarm</b>
         </span>
