@@ -293,7 +293,10 @@ def generar_informe(store: Store, llm: LLMClient | None, sector: str, mes: int, 
     metricas = metricas_de_sector(store, mes, sector)
     if usar_ia and llm is not None:
         base = informe_con_ia(llm, sector, mes, metricas)
-        fuente = "ia"
+        # Transparencia: si el cerebro está en modo prueba (mock), el informe NO
+        # puede decir que "analizó la IA de AMD". Se marca aparte.
+        en_mock = bool(getattr(getattr(llm, "config", None), "use_mock", False))
+        fuente = "mock" if en_mock else "ia"
     else:
         base = redactor.redactar(sector, mes, metricas)
         fuente = "local"

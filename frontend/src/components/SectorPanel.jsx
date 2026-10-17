@@ -24,12 +24,16 @@ const SEMAFORO = {
 function Fuente({ informe }) {
   if (!informe?.fuente) return null;
   const ia = informe.fuente === "ia";
+  const mock = informe.fuente === "mock";
   const evolus = informe.redactor === "evolus";
+  const cerebrito = ia
+    ? { texto: "🧠 Analizó la IA (AMD)", clase: "etiqueta-verde" }
+    : mock
+      ? { texto: "🧠 IA en modo prueba", clase: "etiqueta-ambar" }
+      : { texto: "📝 Redactor local", clase: "etiqueta-azul" };
   return (
     <div className="sector-fuentes">
-      <span className={`etiqueta ${ia ? "etiqueta-verde" : "etiqueta-azul"}`}>
-        {ia ? "🧠 Analizó la IA (AMD)" : "📝 Redactor local"}
-      </span>
+      <span className={`etiqueta ${cerebrito.clase}`}>{cerebrito.texto}</span>
       <span className={`etiqueta ${evolus ? "etiqueta-violeta" : "etiqueta-azul"}`}>
         {evolus ? "✍️ Redactó Evolus" : "✍️ Redacción local"}
       </span>

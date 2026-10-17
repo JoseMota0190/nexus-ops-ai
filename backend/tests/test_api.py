@@ -126,10 +126,10 @@ def test_sectores_tienen_informe_mensual():
     assert detalle["campos"], "el panel necesita los números en criollo"
     assert detalle["historial"], "tiene que estar el historial de meses"
 
-    # Regenerar a mano (en mock usa el redactor local, sin red).
+    # Regenerar a mano (en mock usa el cerebro en modo prueba, sin red).
     gen = client.post("/api/sectores/gerente/generar")
     assert gen.status_code == 200, gen.text
-    assert gen.json()["fuente"] in {"ia", "local"}
+    assert gen.json()["fuente"] in {"ia", "mock", "local"}
 
 
 def test_facturacion_comprobantes_simulados():
