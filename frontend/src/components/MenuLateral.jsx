@@ -5,6 +5,12 @@
 
 export const PANELES = [
   {
+    id: "sala",
+    icono: "🗣️",
+    titulo: "Sala de Agentes",
+    bajada: "Los agentes negocian cada venta en vivo, sobre AMD",
+  },
+  {
     id: "kpis",
     icono: "📊",
     titulo: "KPIs del negocio",

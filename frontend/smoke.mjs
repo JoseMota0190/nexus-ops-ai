@@ -98,7 +98,7 @@ const chequeos = [
   ["arrancó el render", raiz().children.length > 0],
   // La tira pega etiqueta y valor SIN espacio ("Mes7 / 9Semana25"), así que no
   // puede haber borde de palabra después del 9: sigue pegado a "Semana".
-  ["tira fina con el mes", tiene("Mes") && /\d\s*\/\s*9/.test(texto())],
+  ["tira fina con el mes", tiene("Mes") && /Mes\s*\d/.test(texto())],
   ["tira: técnicos", tiene("Técnicos")],
   ["tira: ventas por día", tiene("Ventas por día")],
   ["tira: plata en caja", tiene("En caja")],
@@ -127,7 +127,8 @@ clic(btnMenu);
 await espera(150);
 
 chequeos.push(["menú lateral abierto", !!q(".menu-lateral")]);
-chequeos.push(["menú con 10 paneles", todos(".menu-item").length === 10]);
+chequeos.push(["menú con 11 paneles", todos(".menu-item").length === 11]);
+chequeos.push(["ítem Sala de Agentes", tiene("Sala de Agentes")]);
 chequeos.push(["ítem KPIs", tiene("KPIs del negocio")]);
 chequeos.push(["ítem telégrafo", tiene("Telégrafo de llamadas")]);
 chequeos.push(["ítem motivos", tiene("Motivos: por qué no se vende")]);
@@ -166,8 +167,10 @@ async function probarPanel(id, nombreEsperado, chequeoExtra) {
   }
 }
 
-await probarPanel("kpis", "KPIs del negocio", (c) => ["KPIs cargados", c.includes("Técnicos")]);
-await probarPanel("llamadas", "Telégrafo", (c) => ["telégrafo con datos", c.includes("Barrio")]);
+await probarPanel("sala", "Sala de Agentes", (c) =>
+  ["sala responde", c.includes("negociando") || c.includes("charla") || c.includes("Entrando") || c.includes("Modo rápido")],
+);
+await probarPanel("kpis", "KPIs del negocio", (c) => ["KPIs cargados", c.includes("Técnicos")]);await probarPanel("llamadas", "Telégrafo", (c) => ["telégrafo con datos", c.includes("Barrio")]);
 await probarPanel("motivos", "Motivos", (c) => ["motivos cargados", c.includes("no compran") || c.includes("no contestaron")]);
 await probarPanel("gerente", "gerencia", (c) => ["acta del gerente", !!q(".modal .acta") || c.includes("gerencia")]);
 await probarPanel("evolucion", "Evolución", (c) => ["gráfico SVG", q(".modal svg") !== null]);

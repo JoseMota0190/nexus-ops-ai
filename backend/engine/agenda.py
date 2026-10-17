@@ -151,8 +151,9 @@ def agendar_ventas(ventas: list[dict], ocupados: set[tuple[int, int, str]],
 def tecnicos_de(store) -> list[dict]:
     """Técnicos activos con su zona base, leyéndolos de la base de datos."""
     rows = store.conn.execute(
-        "SELECT id, zona_base FROM tecnicos WHERE activo = 1 ORDER BY id").fetchall()
-    return [{"id": int(r["id"]), "zona": str(r["zona_base"])} for r in rows]
+        "SELECT id, nombre, zona_base FROM tecnicos WHERE activo = 1 ORDER BY id").fetchall()
+    return [{"id": int(r["id"]), "zona": str(r["zona_base"]),
+             "nombre": str(r["nombre"])} for r in rows]
 
 
 def turnos_ocupados(store, semana: int) -> set[tuple[int, int, str]]:

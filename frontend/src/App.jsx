@@ -13,6 +13,7 @@ import TiraFin from "./components/TiraFin.jsx";
 import MenuLateral from "./components/MenuLateral.jsx";
 import PanelModal from "./components/PanelModal.jsx";
 import Pelicula from "./components/Pelicula.jsx";
+import SalaAgentes from "./components/SalaAgentes.jsx";
 
 const REFRESCO_ESTADO = 4000; // el estado "vivo" cada 4 segundos
 const REFRESCO_PESADO = 12000; // los gráficos y tablas, más tranqui
@@ -39,6 +40,7 @@ export default function App() {
   const [panel, setPanel] = useState(null);
   const [pelicula, setPelicula] = useState(null);
   const [velocidad, setVelocidad] = useState(3);
+  const [rapido, setRapido] = useState(false); // interruptor: modo rápido vs sala
 
   const vivo = useRef(true);
   const avisoTimer = useRef(null);
@@ -105,6 +107,11 @@ export default function App() {
     };
   }, [refrescarTodo, traerEstado, traerPesado]);
 
+  // El interruptor de modo: el backend manda si la Sala está negociando o no.
+  useEffect(() => {
+    if (estado?.enjambre) setRapido(estado.enjambre.modo_sala === false);
+  }, [estado?.enjambre?.modo_sala]);
+
   // ------------------------------------------------------------- acciones
   async function correr(que, funcion, mensajeOk) {
     if (ocupado) return undefined;
@@ -152,6 +159,26 @@ export default function App() {
 
   const correrSeis = () =>
     correr("seis", () => api.correrTodo(6), "¡Seis meses corridos de una!");
+
+  // El interruptor: pasar de "modo sala" (los agentes negocian cada venta) a
+  // "modo rápido" (los días corren sin charla) y viceversa.
+  async function cambiarModo() {
+    if (ocupado || pelicula) return;
+    const nuevo = !rapido;
+    try {
+      await api.modo(nuevo);
+      setRapido(nuevo);
+      mostrarAviso(
+        "ok",
+        nuevo
+          ? "Modo rápido: los días corren sin charla (para llegar lejos)."
+          : "Modo sala: los agentes negocian cada venta en vivo.",
+      );
+      await refrescarTodo();
+    } catch (e) {
+      mostrarAviso("error", e.message);
+    }
+  }
   const reiniciar = () => {
     if (
       !window.confirm(
@@ -171,6 +198,8 @@ export default function App() {
   // El contenido de cada panel del menú.
   function contenidoPanel(id) {
     switch (id) {
+      case "sala":
+        return <SalaAgentes estado={estado} />;
       case "kpis":
         return <Kpis estado={estado} />;
       case "dia":
@@ -280,6 +309,16 @@ export default function App() {
               </button>
             ))}
           </div>
+
+          <span className="menu-sim-e">Modo del enjambre</span>
+          <button
+            className={`boton boton-chico ${rapido ? "boton-fantasma" : "boton-primario"}`}
+            onClick={cambiarModo}
+            disabled={!!ocupado || !!pelicula}
+            title="En modo sala, la IA negocia cada venta (a partir del mes 7)"
+          >
+            {rapido ? "⚡ Modo rápido" : "🗣️ Modo sala"}
+          </button>
 
           <span className="menu-sim-sep" />
 

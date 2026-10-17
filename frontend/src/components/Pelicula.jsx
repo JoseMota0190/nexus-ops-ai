@@ -8,6 +8,14 @@ const VELOCIDADES = [
   { minutos: 9, etiqueta: "9 min" },
 ];
 
+// Los agentes que hablan en la sala, con su carita y color.
+const AGENTES = {
+  operador: { nombre: "Teleoperador", icono: "📞" },
+  agenda: { nombre: "Agenda", icono: "📅" },
+  tecnicos: { nombre: "Técnicos", icono: "🔧" },
+  despacho: { nombre: "Despacho", icono: "🚚" },
+};
+
 function reloj(minuto) {
   const h = 8 + Math.floor(minuto / 60);
   const m = Math.floor(minuto % 60);
@@ -64,7 +72,7 @@ export default function Pelicula({ dia, velocidadInicial = 3, onTerminar }) {
     const t = { llamadas: 0, atendidas: 0, ventas: 0, instalaciones: 0 };
     for (const e of visibles) {
       if (e.tipo === "instalacion") t.instalaciones++;
-      else {
+      else if (e.tipo === "llamada") {
         t.llamadas++;
         if (e.atendio) t.atendidas++;
         if (e.venta) t.ventas++;
@@ -173,6 +181,18 @@ function Fila({ e }) {
         <span className="cinta-ico">🔧</span>
         <span className="cinta-txt">
           <b>Instalación</b> — {e.cliente} en {e.barrio} ({e.turno})
+        </span>
+      </div>
+    );
+  }
+  if (e.tipo === "charla") {
+    const a = AGENTES[e.agente] ?? { nombre: e.agente, icono: "🤖" };
+    return (
+      <div className={`cinta-fila cinta-charla cinta-charla-${e.agente}`}>
+        <span className="cinta-hora">{reloj(e.minuto)}</span>
+        <span className="cinta-ico">{a.icono}</span>
+        <span className="cinta-txt cinta-burbuja">
+          <b>{a.nombre}</b>: {e.dice}
         </span>
       </div>
     );

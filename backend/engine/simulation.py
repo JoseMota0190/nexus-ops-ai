@@ -28,6 +28,7 @@ from .business import (
     Empresa,
 )
 from .calls import costo_leads, simular_dia_de_llamadas
+from .enjambre import agendar_semana_enjambre, agendar_venta_en_sala
 from .gerente import (
     reunion_mensual,
     tecnicos_objetivo_del_mes,
@@ -58,6 +59,13 @@ class Simulacion:
         self.semilla = semilla
         self.rng = random.Random(semilla)
         self.empresa = Empresa()
+        # Desde qué mes opera el ENJAMBRE (los agentes negocian la agenda). None =
+        # nunca. Se prende en la API a partir del mes 7: los primeros 6 meses
+        # quedan precargados con el algoritmo rápido.
+        self.enjambre_desde: int | None = None
+        # Interruptor "modo sala" (con charla) vs "modo rápido" (sin charla).
+        self.modo_sala: bool = True
+        self._sala_dia: list[dict] = []  # las charlas del día
 
     # ------------------------------------------------------------- arranque
     def inicializar(self, reiniciar: bool = False) -> Empresa:
@@ -91,6 +99,45 @@ class Simulacion:
             clientes_activos=e.clientes_activos, caja=round(e.caja, 2),
             ventas_totales=e.ventas_totales))
 
+    def _enjambre_on(self) -> bool:
+        """¿Los agentes negocian la agenda ahora mismo?"""
+        return (self.modo_sala and self.enjambre_desde is not None
+                and self.empresa.mes >= self.enjambre_desde)
+
+    def _agendar_en_sala(self, venta_id: int, cliente_id: int, barrio: str,
+                         semana: int, dia: int) -> None:
+        """Los agentes negocian ESTA venta para la semana que viene, ahí mismo.
+
+        Repartir la negociación (una venta por vez, al cerrarse) evita que todo
+        caiga junto el sábado: el trabajo queda parejo a lo largo de la semana.
+        """
+        cita, charla = agendar_venta_en_sala(
+            self.llm, self.store,
+            {"id": venta_id, "cliente_id": cliente_id, "barrio": barrio},
+            semana + 1, self.rng)
+        if cita is None:
+            return  # sin capacidad: queda pendiente (es la señal para contratar)
+        self.store.agendar_cita(cita.venta_id, cita.cliente_id, cita.barrio,
+                                cita.tecnico_id, cita.semana, cita.dia, cita.turno,
+                                cita.estado, cita.mensaje)
+        e = self.empresa
+        self.store.mensaje("whatsapp_cliente", "Nexus Alarm",
+                           f"cliente {cita.cliente_id}", cita.mensaje, e.mes, semana, dia)
+        for linea in charla.lineas:
+            self.store.mensaje("sala_agentes", linea["agente"], charla.cliente,
+                               linea["dice"], e.mes, semana, dia)
+        self._sala_dia.append(self._charla_dict(charla))
+        self._agendadas_dia += 1
+        if charla.negociado:
+            self._negociados_dia += 1
+
+    @staticmethod
+    def _charla_dict(ch) -> dict:
+        return {"venta_id": ch.venta_id, "cliente": ch.cliente, "barrio": ch.barrio,
+                "dia": ch.dia, "turno": ch.turno, "hora": ch.hora,
+                "tecnico_id": ch.tecnico_id, "negociado": ch.negociado,
+                "lineas": ch.lineas}
+
     # ------------------------------------------------------------------ día
     def correr_dia(self) -> dict:
         """Un día de operación entero, guardado en la base de UN SOLO golpe.
@@ -103,6 +150,9 @@ class Simulacion:
     def _correr_dia(self) -> dict:
         e = self.empresa
         semana, dia = e.semana, e.dia_semana
+        self._sala_dia = []  # se llena con las charlas de las ventas de hoy
+        self._agendadas_dia = 0  # ventas que los agentes agendaron hoy en la sala
+        self._negociados_dia = 0  # de esas, cuántas con un turno distinto al pedido
 
         # 1) Instalaciones agendadas para HOY (semana 1 no tiene: arrancan en la 2).
         citas = self.store.instalaciones_de_dia(semana, dia)
@@ -136,7 +186,8 @@ class Simulacion:
                 self.store.cambiar_estado_cliente(por_id[lead.id], estado)
         self.store.insertar_llamadas(filas_llamadas)
 
-        # 5) Las ventas se cargan en la base.
+        # 5) Las ventas se cargan en la base. En modo sala, cada venta se negocia
+        #    EN EL MOMENTO: teleoperador -> coordinador de agenda -> técnicos.
         for v in res.ventas_lista:
             cliente_id = por_id[v.lead.id]
             venta_id = self.store.registrar_venta(
@@ -146,6 +197,8 @@ class Simulacion:
             self.store.conn.execute(
                 "UPDATE llamadas SET venta_id = ? WHERE cliente_id = ? AND semana = ? AND dia = ?",
                 (venta_id, cliente_id, semana, dia))
+            if self._enjambre_on():
+                self._agendar_en_sala(venta_id, cliente_id, v.lead.barrio, semana, dia)
 
         # 6) Costos del día (cada lead que llega cuesta plata de marketing).
         costo = costo_leads(len(leads))
@@ -168,13 +221,15 @@ class Simulacion:
             "atendidas": res.atendidas, "ventas": res.ventas,
             "instalaciones": len(citas), "sin_capacidad": sin_capacidad,
             "ingresos": round(ingresos_hoy, 2), "costos": round(costo, 2),
-            "caja": round(e.caja, 2), "agendadas": agendadas,
-            "turnos_negociados": negociados,
+            "caja": round(e.caja, 2), "agendadas": agendadas + self._agendadas_dia,
+            "turnos_negociados": negociados + self._negociados_dia,
             "motivos_no_compra": res.motivos_no_compra,
             "motivos_no_respuesta": res.motivos_no_respuesta,
             # El "guion" del día: lo que la pantalla reproduce a cámara lenta
             # para que el juez vea la operación pasando llamada por llamada.
             "pelicula": self._pelicula_del_dia(leads, res, citas),
+            # La charla del enjambre de hoy (vacía en modo rápido).
+            "sala": self._sala_dia,
         }
         self.store.guardar_resumen_dia(
             mes=e.mes, semana=semana, dia=dia, leads=len(leads),
@@ -193,12 +248,18 @@ class Simulacion:
         return resumen
 
     def _cerrar_semana(self, semana: int) -> tuple[int, int, int]:
-        """Agenda todas las ventas pendientes para la SEMANA SIGUIENTE."""
+        """Cierra la semana: agenda lo que haya quedado pendiente (el algoritmo).
+
+        En modo SALA, las ventas de la semana ya se fueron negociando de a una al
+        cerrarse; acá sólo se rescata el backlog viejo que quedó sin capacidad.
+        En modo RÁPIDO, acá se agenda todo junto.
+        """
         e = self.empresa
         pendientes = self.store.ventas_sin_cita()
         if not pendientes:
             return 0, 0, 0
         objetivo = semana + 1
+
         ocupados = turnos_ocupados(self.store, objetivo)
         ventas = [{"id": int(v["id"]), "cliente_id": int(v["cliente_id"]),
                    "barrio": v["barrio"]} for v in pendientes]
@@ -252,7 +313,19 @@ class Simulacion:
                 "venta": res.estados[i] == "vendido",
             })
 
-        eventos.sort(key=lambda ev: (ev["minuto"], 0 if ev["tipo"] == "instalacion" else 1))
+        # La SALA DE AGENTES: cada voz entra justo después de que se cierra la venta.
+        minuto_venta = {ev["cliente"]: ev["minuto"] for ev in eventos
+                        if ev["tipo"] == "llamada" and ev.get("venta")}
+        for ch in self._sala_dia:
+            base = minuto_venta.get(ch["cliente"], fin - 20)
+            for k, linea in enumerate(ch["lineas"]):
+                eventos.append({
+                    "tipo": "charla", "minuto": base + k, "agente": linea["agente"],
+                    "dice": linea["dice"], "cliente": ch["cliente"], "barrio": ch["barrio"],
+                })
+
+        _orden = {"instalacion": 0, "llamada": 1, "charla": 2}
+        eventos.sort(key=lambda ev: (ev["minuto"], _orden.get(ev["tipo"], 1)))
         return {"hora_inicio": 8 * 60, "hora_fin": 18 * 60, "eventos": eventos}
 
     # ---------------------------------------------------------------- semana
@@ -264,10 +337,10 @@ class Simulacion:
 
     # ------------------------------------------------------------------ mes
     def correr_mes(self) -> dict:
+        """Corre un mes entero. Sin tope: pasada la meta, la empresa se estabiliza
+        (el Gerente deja de contratar sin control) y sigue operando."""
         e = self.empresa
         mes = e.mes
-        if mes > MESES_TOTALES:
-            return {"mes": mes, "completado": True}
 
         # Reunión mensual del Gerente IA (el programa calcula lo que falta;
         # la IA decide cómo llenarlo y escribe el acta).
@@ -350,9 +423,7 @@ class Simulacion:
 
     def correr_todo(self, meses: int = MESES_TOTALES) -> list[dict]:
         salidas = []
-        for _ in range(meses):
-            if self.empresa.mes > MESES_TOTALES:
-                break
+        for _ in range(max(0, meses)):
             salidas.append(self.correr_mes())
         return salidas
 
@@ -375,5 +446,10 @@ class Simulacion:
             "llamadas_por_dia": e.llamadas_por_dia,
             "leads_por_dia": e.leads_por_dia,
             "capacidad_instalaciones": e.capacidad_instalaciones,
+            "enjambre": {
+                "activo": self._enjambre_on(),
+                "desde_mes": self.enjambre_desde,
+                "modo_sala": self.modo_sala,
+            },
             "kpis": kpis,
         }

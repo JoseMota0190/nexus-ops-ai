@@ -12,6 +12,7 @@ demo). El volumen (miles de llamadas) lo calcula el programa sin tocar la red.
 """
 from __future__ import annotations
 
+import json
 import random
 from typing import Any
 
@@ -59,6 +60,22 @@ def _es_caba(direccion: str) -> bool:
     if any(f in d for f in fuera):
         return False
     return _barrio_de(d) is not None
+
+
+def _contexto(messages: list[dict[str, str]]) -> dict[str, Any]:
+    """Lee el JSON de contexto que el motor manda en el último mensaje del usuario.
+
+    El enjambre le pasa a cada agente las opciones válidas (turnos libres,
+    técnicos candidatos) como un JSON; el agente elige de ahí. Si el último
+    mensaje no es JSON (charla en texto libre), devuelve {}.
+    """
+    ultimo = next((m["content"] for m in reversed(messages)
+                   if m.get("role") == "user"), "")
+    try:
+        data = json.loads(ultimo)
+    except (ValueError, TypeError):
+        return {}
+    return data if isinstance(data, dict) else {}
 
 
 def elegir_motivo(rng: random.Random) -> str:
@@ -140,8 +157,63 @@ def teleoperador_mock(messages: list[dict[str, str]], rng: random.Random) -> dic
     }
 
 
+_DIAS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado"]
+_HORAS = {"9am": "09:00", "12pm": "12:00", "4pm": "16:00"}
+
+
+def operador_mock(exc: dict[str, Any], rng: random.Random) -> dict[str, Any]:
+    """El teleoperador propone al coordinador de agenda a dónde mandar una venta cerrada."""
+    cliente = exc.get("cliente") or "el cliente"
+    barrio = exc.get("barrio") or "CABA"
+    producto = exc.get("producto") or "una alarma"
+    pref = exc.get("preferencia") or {}
+    dia = max(0, min(5, int(pref.get("dia", 0) or 0)))
+    turno = pref.get("turno") or "9am"
+    cuando = {"9am": "a la mañana", "12pm": "al mediodía", "4pm": "a la tarde"}
+    return {
+        "habla": (f"Cerré la venta de {cliente} ({barrio}) por {producto}. "
+                  f"El cliente prefiere el {_DIAS[dia]} "
+                  f"{cuando.get(turno, 'a la mañana')}. ¿Me das un turno libre?"),
+        "dia_preferido": dia,
+        "turno_preferido": turno,
+    }
+
+
 def agenda_mock(messages: list[dict[str, str]], rng: random.Random) -> dict[str, Any]:
-    """Simula al Coordinador de Agenda acordando día/hora con el operador."""
+    """Coordinador de agenda: elige un turno de la pizarra de libres.
+
+    Con contexto del enjambre (JSON con `turnos_libres`) respeta la preferencia
+    del cliente y, si no está, elige de la lista (nunca inventa un turno). Sin
+    contexto, cae al modo viejo: arma el turno leyendo el texto de la charla.
+    """
+    ctx = _contexto(messages)
+    libres = ctx.get("turnos_libres")
+    if libres:
+        dia_pref = int(ctx.get("dia_preferido", 0) or 0)
+        turno_pref = ctx.get("turno_preferido") or ""
+        elegido = next((s for s in libres if s.get("dia") == dia_pref
+                        and s.get("turno") == turno_pref), None)
+        if elegido is None:
+            elegido = next((s for s in libres if s.get("dia") == dia_pref), None)
+        if elegido is None:
+            elegido = libres[0]
+        dia = int(elegido.get("dia", 0))
+        turno = str(elegido.get("turno", "9am"))
+        cliente = ctx.get("cliente") or "el cliente"
+        return {
+            "turno_propuesto": turno,
+            "dia": dia,
+            "cierra_acuerdo": True,
+            "texto_para_cliente": (
+                f"¡Hola! Te confirmo la instalación de tu alarma el {_DIAS[dia]} "
+                f"a las {_HORAS.get(turno, '09:00')}. El técnico se presenta en el "
+                "horario acordado. ¡Gracias por confiar en Nexus Alarm!"
+            ),
+            "nota_interna": (f"Turno cerrado para {cliente}: {_DIAS[dia]} {turno}. "
+                             "Le paso el reparto al coordinador de técnicos."),
+        }
+
+    # Modo viejo: sin pizarra, arma el turno leyendo el texto de la charla.
     ultimo = next((m["content"] for m in reversed(messages) if m.get("role") == "user"), "")
     dia = 0
     turno = "9am"
@@ -154,19 +226,32 @@ def agenda_mock(messages: list[dict[str, str]], rng: random.Random) -> dict[str,
         if k in ultimo.lower():
             turno = v
             break
-    cliente = "la cliente"
-    horas = {"9am": "09:00", "12pm": "12:00", "4pm": "16:00"}
-    dias = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado"]
     return {
         "turno_propuesto": turno,
         "dia": dia,
         "cierra_acuerdo": True,
         "texto_para_cliente": (
-            f"¡Hola! Te confirmo la instalación de tu alarma el {dias[dia]} a las "
-            f"{horas.get(turno, '09:00')}. El técnico se presenta en el horario "
+            f"¡Hola! Te confirmo la instalación de tu alarma el {_DIAS[dia]} a las "
+            f"{_HORAS.get(turno, '09:00')}. El técnico se presenta en el horario "
             "acordado. ¡Gracias por confiar en Nexus Alarm!"
         ),
-        "nota_interna": f"Turno reservado para {cliente}: {turno} del día {dia}.",
+        "nota_interna": f"Turno reservado para la cliente: {turno} del día {dia}.",
+    }
+
+
+def tecnicos_mock(exc: dict[str, Any], rng: random.Random) -> dict[str, Any]:
+    """Coordinador de técnicos: elige a quién mandar entre los candidatos."""
+    candidatos = exc.get("candidatos") or []
+    barrio = exc.get("barrio") or "la zona"
+    elegido = candidatos[0] if candidatos else {"id": "TEC-01", "zona": barrio}
+    tid = str(elegido.get("id") or "TEC-01")
+    nombre = str(elegido.get("nombre") or tid)
+    zona = elegido.get("zona") or barrio
+    return {
+        "habla": (f"Para {barrio} mando a {nombre}: ya está trabajando en {zona}, así no "
+                  "cruza la ciudad de punta a punta. Le dejo la visita en la lista del día."),
+        "tecnico_id": tid,
+        "explicacion": f"{nombre} cubre {zona} y es el que menos se desvía de su recorrido.",
     }
 
 

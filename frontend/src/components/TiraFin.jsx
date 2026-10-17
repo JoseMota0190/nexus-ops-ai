@@ -25,7 +25,7 @@ export default function TiraFin({ estado, cargando, usuario, corriendo, onMenu, 
       </div>
 
       <div className="tira-datos">
-        <Dato etiqueta="Mes" valor={cargando ? "—" : `${mes} / 9`} />
+        <Dato etiqueta="Mes" valor={cargando ? "—" : String(mes)} />
         <Dato etiqueta="Semana" valor={cargando ? "—" : semana} />
         <Dato
           etiqueta="Técnicos"

@@ -67,10 +67,18 @@ if not store.conn.execute("SELECT 1 FROM resumen_mes LIMIT 1").fetchone():
             "La siembra de los primeros %s meses falló; se arranca igual: %s",
             MESES_AUTOMATICOS, exc)
 _rng = random.Random(2026)
+# Los primeros 6 meses quedan precargados con el algoritmo rápido; del 7 en
+# adelante la agenda la negocian los agentes en la SALA DEL ENJAMBRE.
+sim.enjambre_desde = 7
 
 
 class Vacio(BaseModel):
     ok: bool = True
+
+
+class ModoSim(BaseModel):
+    """Interruptor del modo: rápido (sin charla) o sala (los agentes negocian)."""
+    rapido: bool = False
 
 
 # ------------------------------------------------------------------ estado
@@ -85,7 +93,7 @@ def estado() -> dict:
         "SELECT mes, accion, valor, motivo, aprobada, aviso FROM decisiones_gerente "
         "ORDER BY id DESC LIMIT 12").fetchall()]
     e["motivos"] = motivos()
-    e["puede_avanzar"] = sim.empresa.mes <= MESES_TOTALES
+    e["puede_avanzar"] = True  # sin tope: la app puede seguir día a día
     return e
 
 
@@ -120,9 +128,11 @@ def dias(semana: int | None = None) -> list[dict]:
 # ------------------------------------------------------------- simulación
 @app.post("/api/mes")
 def avanzar_mes() -> dict:
-    """Botón 'Avanzar 1 mes': corre la reunión del Gerente y el mes entero."""
-    if sim.empresa.mes > MESES_TOTALES:
-        raise HTTPException(409, "Ya se corrieron los 9 meses.")
+    """Botón 'Avanzar 1 mes': corre la reunión del Gerente y el mes entero.
+
+    La app no tiene tope de meses: pasada la meta, la empresa se ESTABILIZA y
+    sigue operando (el Gerente deja de contratar sin control).
+    """
     return sim.correr_mes()
 
 
@@ -130,7 +140,7 @@ def avanzar_mes() -> dict:
 def correr_todo(meses: int = 6) -> dict:
     """Corre de una los primeros `meses` (la fase automática: 6 meses solos)."""
     salidas = []
-    for _ in range(min(meses, MESES_TOTALES - sim.empresa.mes + 1)):
+    for _ in range(max(0, meses)):
         salidas.append(sim.correr_mes())
     return {"corridos": len(salidas), "ultimo": salidas[-1] if salidas else None,
             "estado": sim.estado()}
@@ -138,14 +148,22 @@ def correr_todo(meses: int = 6) -> dict:
 
 @app.post("/api/dia")
 def correr_un_dia() -> dict:
-    if sim.empresa.mes > MESES_TOTALES:
-        raise HTTPException(409, "Ya se corrieron los 9 meses.")
+    """Corre un día. Sin tope: la app puede seguir día por día indefinidamente."""
     return sim.correr_dia()
+
+
+@app.post("/api/modo")
+def modo(m: ModoSim) -> dict:
+    """Interruptor: 'modo sala' (los agentes negocian) vs 'modo rápido' (sin charla)."""
+    sim.modo_sala = not m.rapido
+    return {"ok": True, "rapido": m.rapido, "modo_sala": sim.modo_sala,
+            "enjambre_desde": sim.enjambre_desde}
 
 
 @app.post("/api/reiniciar")
 def reiniciar() -> dict:
     sim.empresa = sim.inicializar(reiniciar=True)
+    sim.enjambre_desde = 7
     return sim.estado()
 
 
@@ -170,6 +188,14 @@ def llamadas(limite: int = 40) -> list[dict]:
 @app.get("/api/mensajes")
 def mensajes(tipo: str = "whatsapp_cliente", limite: int = 25) -> list[dict]:
     return [dict(r) for r in store.ultimos_mensajes(tipo, limite)]
+
+
+@app.get("/api/sala")
+def sala(limite: int = 60) -> list[dict]:
+    """La Sala de Agentes: la última charla del enjambre (teleoperador -> agenda ->
+    técnicos), en orden cronológico, para mostrarla en el panel."""
+    filas = store.ultimos_mensajes("sala_agentes", limite)
+    return [dict(r) for r in reversed(filas)]
 
 
 # ------------------------------------------------------------------ mapa
@@ -239,8 +265,9 @@ def llamada_en_vivo() -> dict:
 
 @app.get("/api/objetivos")
 def objetivos() -> list[dict]:
+    ultimo = max(MESES_TOTALES, sim.empresa.mes)
     return [{"mes": m, "ventas_por_dia": round(ventas_objetivo_del_mes(m), 1),
-             "tecnicos": tecnicos_objetivo_del_mes(m)} for m in range(1, MESES_TOTALES + 1)]
+             "tecnicos": tecnicos_objetivo_del_mes(m)} for m in range(1, ultimo + 1)]
 
 
 class Escenario(BaseModel):

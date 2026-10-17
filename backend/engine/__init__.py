@@ -14,6 +14,10 @@ from .technicians import Tecnico, asignar_visita, Visita, nuevos_tecnicos
 from .montecarlo import simular_historial, ResumenHistorial
 from .calls import DiaLlamadas, simular_dia_de_llamadas, MOTIVOS_NO_COMPRA
 from .agenda import Cita, ResultadoAgenda, agendar_ventas, nombres_para_alta
+from .enjambre import (
+    Charla, agendar_semana_enjambre, agendar_venta_en_sala, negociar_venta,
+    turnos_libres,
+)
 from .gerente import (
     reunion_mensual, ventas_objetivo_del_mes, tecnicos_objetivo_del_mes,
     ventas_potenciales, validar_decision,
@@ -30,6 +34,8 @@ __all__ = [
     "ventas_por_dia", "tecnicos_necesarios", "elegir_kit", "Producto",
     "DiaLlamadas", "simular_dia_de_llamadas", "MOTIVOS_NO_COMPRA",
     "Cita", "ResultadoAgenda", "agendar_ventas", "nombres_para_alta",
+    "Charla", "agendar_semana_enjambre", "agendar_venta_en_sala",
+    "negociar_venta", "turnos_libres",
     "reunion_mensual", "ventas_objetivo_del_mes", "tecnicos_objetivo_del_mes",
     "ventas_potenciales", "validar_decision",
     "Simulacion", "mes_de_semana",

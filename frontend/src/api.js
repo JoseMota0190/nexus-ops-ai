@@ -97,4 +97,6 @@ export const api = {
   avanzarDia: () => pedir("/api/dia", { method: "POST", body: "{}" }),
   correrTodo: (meses = 6) => pedir(`/api/todo?meses=${meses}`, { method: "POST", body: "{}" }),
   reiniciar: () => pedir("/api/reiniciar", { method: "POST", body: "{}" }),
+  sala: (limite = 60) => pedir(`/api/sala?limite=${limite}`),
+  modo: (rapido) => pedir("/api/modo", { method: "POST", body: cuerpo({ rapido }) }),
 };
