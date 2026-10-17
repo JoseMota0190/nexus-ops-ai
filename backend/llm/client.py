@@ -154,6 +154,8 @@ class LLMClient:
         elif agent == "despacho":
             exc = json.loads(messages[-1]["content"])
             data = _mock.despacho_mock(exc, self._rng)
+        elif agent.startswith("sector_"):
+            data = _mock.informe_sector_mock(messages, self._rng)
         else:
             raise LLMError(f"Agente mock desconocido: {agent!r}")
         dt = (time.perf_counter() - t0) * 1000.0

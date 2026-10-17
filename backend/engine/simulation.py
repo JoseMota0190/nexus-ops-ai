@@ -36,6 +36,7 @@ from .gerente import (
     ventas_potenciales,
 )
 from .leads import generar_leads
+from .sectores import generar_informes_mes
 
 NOMBRES_OPERADORES = ["Mariana Ríos", "Pablo Cabrera", "Sofía Duarte",
                       "Esteban Vega", "Carla Sosa", "Iván Ayala", "Nadia Ledesma"]
@@ -66,6 +67,9 @@ class Simulacion:
         # Interruptor "modo sala" (con charla) vs "modo rápido" (sin charla).
         self.modo_sala: bool = True
         self._sala_dia: list[dict] = []  # las charlas del día
+        # ¿Los informes de sector se generan con IA (AMD + Evolus) o con el
+        # redactor local? El arranque (siembra) los hace locales, sin esperar.
+        self.reportes_con_ia: bool = True
 
     # ------------------------------------------------------------- arranque
     def inicializar(self, reiniciar: bool = False) -> Empresa:
@@ -389,6 +393,16 @@ class Simulacion:
             costos_mejoras=round(float(reunion["inversion"]), 2),
             costos_total=costos_total, caja=round(e.caja, 2),
             clientes_activos=e.clientes_activos)
+
+        # Los 4 sectores sacan su informe del mes (IA + Evolus si están; si no,
+        # el redactor local). Nunca frena el cierre del mes.
+        try:
+            generar_informes_mes(self.store, self.llm, mes,
+                                 usar_ia=self.reportes_con_ia)
+        except Exception:  # noqa: BLE001
+            import logging
+            logging.getLogger("nexus.engine").exception(
+                "No se pudieron generar los informes de sector del mes %s", mes)
 
         # avanza al próximo mes
         e.mes += 1

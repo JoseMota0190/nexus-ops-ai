@@ -6,9 +6,11 @@ Todo lo que corre la simulación queda acá, así se puede parar y seguir despu�
 """
 from __future__ import annotations
 
+import json
 import sqlite3
 from contextlib import contextmanager
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -137,6 +139,22 @@ CREATE TABLE IF NOT EXISTS actas_gerente (
   cuerpo  TEXT NOT NULL,
   meta    TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS reportes_sector (
+  mes           INTEGER NOT NULL,
+  sector        TEXT    NOT NULL,
+  titulo        TEXT    NOT NULL,
+  resumen       TEXT    NOT NULL,
+  hallazgos     TEXT    NOT NULL DEFAULT '[]',
+  recomendacion TEXT    NOT NULL DEFAULT '',
+  semaforo      TEXT    NOT NULL DEFAULT 'verde',
+  fuente        TEXT    NOT NULL DEFAULT 'local',
+  redactor      TEXT    NOT NULL DEFAULT 'local',
+  documento     TEXT    NOT NULL DEFAULT '',
+  metricas      TEXT    NOT NULL DEFAULT '{}',
+  creado        TEXT    NOT NULL DEFAULT '',
+  PRIMARY KEY (mes, sector)
+);
 """
 
 
@@ -151,6 +169,22 @@ class EmpresaRow:
     clientes_activos: int
     caja: float
     ventas_totales: int
+
+
+def _ahora() -> str:
+    """Marca de tiempo UTC legible (para saber cuándo se escribió el informe)."""
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def _reporte_dict(fila: sqlite3.Row) -> dict:
+    """Convierte la fila de un informe en un diccionario con los JSON ya listos."""
+    d = dict(fila)
+    for campo in ("hallazgos", "metricas"):
+        try:
+            d[campo] = json.loads(d.get(campo) or ("[]" if campo == "hallazgos" else "{}"))
+        except (ValueError, TypeError):
+            d[campo] = [] if campo == "hallazgos" else {}
+    return d
 
 
 class Store:
@@ -215,9 +249,10 @@ class Store:
 
     def reset(self) -> None:
         """Borra todas las tablas y rehace el esquema (para reiniciar la demo)."""
-        for tabla in ("mensajes", "actas_gerente", "decisiones_gerente",
-                      "resumen_mes", "resumen_dia", "citas", "ventas",
-                      "llamadas", "clientes", "tecnicos", "operadores", "empresa"):
+        for tabla in ("reportes_sector", "mensajes", "actas_gerente",
+                      "decisiones_gerente", "resumen_mes", "resumen_dia", "citas",
+                      "ventas", "llamadas", "clientes", "tecnicos", "operadores",
+                      "empresa"):
             self._exec(f"DROP TABLE IF EXISTS {tabla}")
         self.conn.executescript(SCHEMA)
         self.conn.commit()
@@ -418,6 +453,55 @@ class Store:
                ON CONFLICT(mes) DO UPDATE SET titulo=excluded.titulo,
                  cuerpo=excluded.cuerpo, meta=excluded.meta""",
             (mes, titulo, cuerpo, meta))
+
+    # ------------------------------------------------- informes de sector
+    def guardar_reporte_sector(self, mes: int, sector: str, titulo: str, resumen: str,
+                               hallazgos: list, recomendacion: str, semaforo: str,
+                               fuente: str, redactor: str, documento: str,
+                               metricas: dict) -> None:
+        """Guarda (o reemplaza) el informe mensual de un sector."""
+        self._exec(
+            """INSERT INTO reportes_sector (mes, sector, titulo, resumen, hallazgos,
+                   recomendacion, semaforo, fuente, redactor, documento, metricas, creado)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               ON CONFLICT(mes, sector) DO UPDATE SET
+                 titulo=excluded.titulo, resumen=excluded.resumen,
+                 hallazgos=excluded.hallazgos, recomendacion=excluded.recomendacion,
+                 semaforo=excluded.semaforo, fuente=excluded.fuente,
+                 redactor=excluded.redactor, documento=excluded.documento,
+                 metricas=excluded.metricas, creado=excluded.creado""",
+            (mes, sector, titulo, resumen, json.dumps(hallazgos, ensure_ascii=False),
+             recomendacion, semaforo, fuente, redactor, documento,
+             json.dumps(metricas, ensure_ascii=False), _ahora()))
+
+    def reporte_sector(self, mes: int, sector: str) -> dict | None:
+        """El informe de un sector en un mes puntual (o None si no existe)."""
+        fila = self.conn.execute(
+            "SELECT * FROM reportes_sector WHERE mes = ? AND sector = ?",
+            (mes, sector)).fetchone()
+        return _reporte_dict(fila) if fila else None
+
+    def reportes_sector(self, mes: int | None = None) -> list[dict]:
+        """Todos los informes (de un mes, o de todos) ordenados por mes y sector."""
+        if mes is None:
+            filas = self.conn.execute(
+                "SELECT * FROM reportes_sector ORDER BY mes, sector").fetchall()
+        else:
+            filas = self.conn.execute(
+                "SELECT * FROM reportes_sector WHERE mes = ? ORDER BY sector",
+                (mes,)).fetchall()
+        return [_reporte_dict(f) for f in filas]
+
+    def ultimo_reporte_sector(self, sector: str) -> dict | None:
+        """El informe más reciente de un sector (para la portada del menú)."""
+        fila = self.conn.execute(
+            "SELECT * FROM reportes_sector WHERE sector = ? ORDER BY mes DESC LIMIT 1",
+            (sector,)).fetchone()
+        return _reporte_dict(fila) if fila else None
+
+    def meses_con_reporte(self) -> list[int]:
+        return [int(r["mes"]) for r in self.conn.execute(
+            "SELECT DISTINCT mes FROM reportes_sector ORDER BY mes").fetchall()]
 
     # ---------------------------------------------------------- mensajes
     def mensaje(self, tipo: str, remitente: str, destinatario: str, texto: str,

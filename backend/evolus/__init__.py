@@ -11,6 +11,7 @@ from .config import EvolusConfig, get_config
 from .extract import comparar, detectar_errores, evaluar_factura, evaluar_lote
 from .facturas import cuit_valido, generar_factura, generar_facturas
 from .mock import SELLO_SIMULADO
+from .redactar import redactar_informe
 from .router import router
 from .workflow import contrato_mock, ejecutar_contrato, texto_contrato_por_defecto
 
@@ -20,4 +21,5 @@ __all__ = [
     "EvolusClient", "EvolusError", "EvolusMetrics", "get_metrics",
     "comparar", "detectar_errores", "evaluar_factura", "evaluar_lote",
     "ejecutar_contrato", "contrato_mock", "texto_contrato_por_defecto",
+    "redactar_informe",
 ]

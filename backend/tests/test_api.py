@@ -97,9 +97,48 @@ def test_todos_los_get_de_la_pantalla_responden():
              if getattr(r, "methods", None) and "GET" in r.methods
              and r.path.startswith("/api")]
     assert len(rutas) >= 8, rutas
+    # Las rutas con parámetros necesitan un valor real para probarse.
+    valores = {"{sector}": "ventas"}
     for ruta in rutas:
-        resp = client.get(ruta)
-        assert resp.status_code == 200, f"{ruta} -> {resp.status_code}: {resp.text[:200]}"
+        prueba = ruta
+        for param, valor in valores.items():
+            prueba = prueba.replace(param, valor)
+        resp = client.get(prueba)
+        assert resp.status_code == 200, f"{prueba} -> {resp.status_code}: {resp.text[:200]}"
+
+
+def test_sectores_tienen_informe_mensual():
+    """Los 4 sectores responden y traen su informe del mes (aunque sea local)."""
+    client.post("/api/reiniciar")
+    for _ in range(2):  # deja dos meses cerrados
+        client.post("/api/mes")
+
+    lista = client.get("/api/sectores").json()
+    assert [s["id"] for s in lista] == ["gerente", "ventas", "agenda", "facturacion"]
+    assert all(s["tiene_informe"] for s in lista), lista
+    assert lista[0]["mes_reporte"] == 2
+
+    detalle = client.get("/api/sectores/ventas").json()
+    assert detalle["tiene_informe"] is True
+    assert detalle["titulo"]
+    assert detalle["resumen"]
+    assert detalle["hallazgos"], "un informe sin hallazgos no sirve"
+    assert detalle["campos"], "el panel necesita los números en criollo"
+    assert detalle["historial"], "tiene que estar el historial de meses"
+
+    # Regenerar a mano (en mock usa el redactor local, sin red).
+    gen = client.post("/api/sectores/gerente/generar")
+    assert gen.status_code == 200, gen.text
+    assert gen.json()["fuente"] in {"ia", "local"}
+
+
+def test_facturacion_comprobantes_simulados():
+    """La facturación trae comprobantes simulados y su auditoría (sin red)."""
+    client.post("/api/mes")
+    d = client.get("/api/facturacion").json()
+    assert d["sello"] == "SIMULADO – SIN VALIDEZ FISCAL"
+    assert d["metricas"]["comprobantes"] >= 1
+    assert d["facturas"], "tienen que venir comprobantes de ejemplo"
 
 
 def test_escenario_sliders_calcula():
@@ -161,6 +200,8 @@ if __name__ == "__main__":
     test_objetivos_9_meses()
     test_reiniciar_vuelve_al_inicio()
     test_todos_los_get_de_la_pantalla_responden()
+    test_sectores_tienen_informe_mensual()
+    test_facturacion_comprobantes_simulados()
     test_escenario_sliders_calcula()
     test_dia_en_vivo_corre_en_segundo_plano_y_termina()
     test_no_se_puede_correr_dos_cosas_juntas()

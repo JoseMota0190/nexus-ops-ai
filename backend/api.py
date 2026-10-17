@@ -22,6 +22,7 @@ from schemas import TeleoperadorResponse
 from store import Store
 
 from engine import Simulacion, ZONAS
+from engine import sectores as sectores_agentes
 from engine.business import (
     DIAS_POR_SEMANA,
     MESES_AUTOMATICOS,
@@ -51,6 +52,19 @@ app.add_middleware(
 store = Store(DATA)
 llm = LLMClient()
 sim = Simulacion(store, llm)
+
+# Evolus (opcional y aislado): si el módulo está sano, conectamos sus puertas
+# (/api/evolus/...). Va en try/except para que un problema del módulo NUNCA
+# tumbe el motor principal.
+EVOLUS_CONECTADO = False
+try:
+    from evolus import router as evolus_router
+
+    app.include_router(evolus_router)
+    EVOLUS_CONECTADO = True
+except Exception:  # noqa: BLE001
+    import logging
+    logging.getLogger("nexus.api").exception("No se pudo conectar el módulo Evolus")
 
 # El DÍA EN VIVO: el que corre en segundo plano, negociando venta por venta, para
 # que la pantalla vea a los agentes hablar mientras piensan (AMD tarda ~15 s por
@@ -83,15 +97,25 @@ if not store.conn.execute("SELECT 1 FROM resumen_mes LIMIT 1").fetchone():
         # reuniones del gerente y la llamada en vivo.
         llm_real = sim.llm
         sim.llm = LLMClient(config=LLMConfig(use_mock=True, model="mock"))
+        sim.reportes_con_ia = False  # la siembra escribe los informes localmente
         try:
             sim.correr_todo(MESES_AUTOMATICOS)
         finally:
             sim.llm = llm_real
+            sim.reportes_con_ia = True
     except Exception as exc:  # noqa: BLE001 — nada debe apagar el arranque
         import logging
         logging.getLogger("nexus.api").exception(
             "La siembra de los primeros %s meses falló; se arranca igual: %s",
             MESES_AUTOMATICOS, exc)
+# Red de seguridad de los informes de sector: si a algún mes ya corrido le falta
+# su informe (p. ej. una base vieja), se lo escribe con el redactor local.
+try:
+    sectores_agentes.asegurar_informes(store)
+    sim.reportes_con_ia = True
+except Exception:  # noqa: BLE001
+    import logging
+    logging.getLogger("nexus.api").exception("No se pudieron asegurar los informes de sector")
 _rng = random.Random(2026)
 # Los primeros 6 meses quedan precargados con el algoritmo rápido; del 7 en
 # adelante la agenda la negocian los agentes en la SALA DEL ENJAMBRE.
@@ -294,6 +318,51 @@ def mapa() -> dict:
         "citas": [{**dict(c), "lat": coords.get(c["barrio"], {}).get("lat"),
                    "lon": coords.get(c["barrio"], {}).get("lon")} for c in citas],
         "capacidad_dia": sim.empresa.capacidad_instalaciones,
+    }
+
+
+# ------------------------------------------------------------ sectores
+@app.get("/api/sectores")
+def sectores_lista() -> list[dict]:
+    """Los 4 sectores (Gerencia, Ventas, Agenda, Facturación) con su último informe."""
+    return sectores_agentes.listado(store, sim.empresa.mes)
+
+
+def _mes_informe(mes: int | None) -> int:
+    """El mes pedido o, si no, el último mes cerrado (el mes en curso menos 1)."""
+    if mes:
+        return int(mes)
+    return max(1, sim.empresa.mes - 1)
+
+
+@app.get("/api/sectores/{sector}")
+def sector_detalle(sector: str, mes: int | None = None) -> dict:
+    """El informe de un sector (informe + números + historial)."""
+    if not sectores_agentes.es_sector(sector):
+        raise HTTPException(404, f"Sector desconocido: {sector}")
+    return sectores_agentes.detalle(store, sector, _mes_informe(mes))
+
+
+@app.post("/api/sectores/{sector}/generar")
+def sector_generar(sector: str, mes: int | None = None) -> dict:
+    """Vuelve a generar el informe del sector (IA + Evolus si están)."""
+    if not sectores_agentes.es_sector(sector):
+        raise HTTPException(404, f"Sector desconocido: {sector}")
+    m = _mes_informe(mes)
+    usar_ia = not get_config().use_mock
+    return sectores_agentes.generar_informe(store, llm, sector, m, usar_ia=usar_ia)
+
+
+# --------------------------------------------------------- facturación
+@app.get("/api/facturacion")
+def facturacion(mes: int | None = None) -> dict:
+    """Comprobantes SIMULADOS del mes + su auditoría (100% local, sin red)."""
+    m = _mes_informe(mes)
+    return {
+        "mes": m,
+        "metricas": sectores_agentes.metricas_de_sector(store, m, "facturacion"),
+        "facturas": sectores_agentes.facturas_del_mes(m),
+        "sello": "SIMULADO – SIN VALIDEZ FISCAL",
     }
 
 

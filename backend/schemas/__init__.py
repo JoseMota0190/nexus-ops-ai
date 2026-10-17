@@ -4,6 +4,7 @@ from .despacho import DespachoResponse, AccionDespacho
 from .gerente import DecisionGerente, ReunionGerente, Palanca
 from .agenda import CoordinacionResponse
 from .enjambre import TurnoOperador, TurnoTecnicos
+from .sector import Hallazgo, InformeSector
 
 __all__ = [
     "TeleoperadorResponse", "Calificacion",
@@ -11,4 +12,5 @@ __all__ = [
     "DecisionGerente", "ReunionGerente", "Palanca",
     "CoordinacionResponse",
     "TurnoOperador", "TurnoTecnicos",
+    "Hallazgo", "InformeSector",
 ]

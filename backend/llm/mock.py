@@ -364,3 +364,29 @@ def despacho_mock(exc: dict[str, Any], rng: random.Random) -> dict[str, Any]:
         "explicacion": f"Visita {visita} (técnico {tecnico}): {explicacion}",
         "urgencia": 5 if tipo == "urgencia" else (3 if accion == "reasignar" else 1),
     }
+
+
+def informe_sector_mock(messages: list[dict[str, str]],
+                        rng: random.Random) -> dict[str, Any]:
+    """Informe de sector en modo prueba.
+
+    El motor manda los NÚMEROS del mes como JSON en el último mensaje; acá los
+    pasamos por el redactor LOCAL para devolver un informe coherente, sin red ni
+    créditos. Es el mismo texto que usaría el respaldo real.
+    """
+    ctx = _contexto(messages)
+    sector = str(ctx.get("sector") or "gerente")
+    mes = int(ctx.get("mes") or 1)
+    metricas = ctx.get("metricas") or {}
+
+    # Import perezoso: evita un ciclo de importación con el motor.
+    from engine.redactor import redactar
+
+    base = redactar(sector, mes, metricas)
+    return {
+        "titulo": base["titulo"],
+        "resumen": base["resumen"],
+        "hallazgos": base["hallazgos"],
+        "recomendacion": base["recomendacion"],
+        "semaforo": base["semaforo"],
+    }

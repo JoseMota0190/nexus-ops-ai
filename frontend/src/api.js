@@ -90,6 +90,16 @@ export const api = {
   metricas: () => pedir("/api/metricas"),
   actas: () => pedir("/api/actas"),
   objetivos: () => pedir("/api/objetivos"),
+  sectores: () => pedir("/api/sectores"),
+  sectorDetalle: (id, mes) =>
+    pedir(`/api/sectores/${id}${mes ? `?mes=${mes}` : ""}`),
+  generarSector: (id, mes) =>
+    pedir(`/api/sectores/${id}/generar${mes ? `?mes=${mes}` : ""}`, {
+      method: "POST",
+      body: "{}",
+    }),
+  facturacion: (mes) => pedir(`/api/facturacion${mes ? `?mes=${mes}` : ""}`),
+  evolusSalud: () => pedir("/api/evolus/salud"),
 
   escenario: (datos) => pedir("/api/escenario", { method: "POST", body: cuerpo(datos) }),
   llamadaEnVivo: () => pedir("/api/llamada_en_vivo", { method: "POST", body: "{}" }),

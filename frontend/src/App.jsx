@@ -8,6 +8,8 @@ import { LogLlamadas, Motivos } from "./components/Llamadas.jsx";
 import AgenteVivo from "./components/AgenteVivo.jsx";
 import DetalleDia from "./components/DetalleDia.jsx";
 import MetricasAMD from "./components/MetricasAMD.jsx";
+import FranjaAMD from "./components/FranjaAMD.jsx";
+import SectorPanel from "./components/SectorPanel.jsx";
 import MapaCaba from "./components/MapaCaba.jsx";
 import Logo from "./components/Logo.jsx";
 import TiraFin from "./components/TiraFin.jsx";
@@ -26,6 +28,8 @@ export default function App() {
   const [mapa, setMapa] = useState(null);
   const [metricas, setMetricas] = useState(null);
   const [actas, setActas] = useState([]);
+  const [sectores, setSectores] = useState(null);
+  const [evolus, setEvolus] = useState(null);
 
   const [errEstado, setErrEstado] = useState(null);
   const [errPesado, setErrPesado] = useState({});
@@ -73,6 +77,8 @@ export default function App() {
       ["mapa", api.mapa, setMapa],
       ["metricas", api.metricas, setMetricas],
       ["actas", api.actas, setActas],
+      ["sectores", api.sectores, setSectores],
+      ["evolus", api.evolusSalud, setEvolus],
     ];
     const errores = {};
     await Promise.all(
@@ -260,6 +266,14 @@ export default function App() {
   // El contenido de cada panel del menú.
   function contenidoPanel(id) {
     switch (id) {
+      // ------------------------------------------------ los 4 SECTORES
+      case "gerente":
+      case "ventas":
+      case "agenda":
+      case "facturacion":
+        return <SectorPanel sector={id} />;
+
+      // --------------------------------- paneles viejos (ocultos del menú)
       case "sala":
         return <SalaAgentes estado={estado} />;
       case "kpis":
@@ -272,7 +286,7 @@ export default function App() {
         );
       case "motivos":
         return <Motivos motivos={estado?.motivos} cargando={cargandoEstado} error={errEstado} />;
-      case "gerente":
+      case "gerencia":
         return (
           <Acta
             actas={actas}
@@ -364,8 +378,9 @@ export default function App() {
         ) : null}
       </main>
 
-      {/* El cuadro de simulación: abajo del mapa, lo único que el dueño toca. */}
-      <div className="menu-simulacion">
+      {/* El PIE: el cuadro de simulación + la Sala de Agentes + la franja AMD. */}
+      <footer className="pie">
+        <div className="menu-simulacion">
           <button
             className="boton boton-primario"
             onClick={correrUnDia}
@@ -398,6 +413,23 @@ export default function App() {
             {rapido ? "⚡ Modo rápido" : "🗣️ Modo sala"}
           </button>
         </div>
+
+        {/* La SALA DE AGENTES, dentro del mismo cuadro de simulación. */}
+        <section className="sim-sala">
+          <div className="sim-sala-cab">
+            <span className="sim-sala-titulo">🗣️ Sala de agentes en vivo</span>
+            <span className="sim-sala-nota">
+              Los agentes negocian cada venta sobre AMD; acá se ve la charla tal cual.
+            </span>
+          </div>
+          <div className="sim-sala-caja">
+            <SalaAgentes estado={estado} refrescoMs={6000} />
+          </div>
+        </section>
+
+        {/* La franja AMD: el pulso del cerebro, siempre a la vista. */}
+        <FranjaAMD metricas={metricas} evolus={evolus} />
+      </footer>
 
         {/* El DÍA EN VIVO: mientras los agentes negocian, tapamos el mapa con la Sala
             y dejamos que las burbujas vayan apareciendo (AMD piensa lento, ~15 s). */}
@@ -444,6 +476,7 @@ export default function App() {
         panelActivo={panel}
         onAbrir={abrirPanel}
         onCerrar={() => setMenuAbierto(false)}
+        sectores={sectores}
       />
 
       <PanelModal panel={panel} onCerrar={() => setPanel(null)}>

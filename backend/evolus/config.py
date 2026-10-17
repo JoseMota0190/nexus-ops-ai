@@ -45,6 +45,9 @@ class EvolusConfig:
     extractor_id: str = ""
     # Opcional: id del workflow de contratos (creado y ENCENDIDO en la UI).
     workflow_id: str = ""
+    # AI Tool de Evolus que usamos para REDACTAR los informes de sector
+    # (por defecto "summarize"; se puede cambiar con EVOLUS_REDACTOR_TOOL).
+    redactor_tool: str = "summarize"
     max_retries: int = 2  # regla del proyecto: máx. 2 reintentos
     timeout_s: float = 30.0
 
@@ -86,4 +89,5 @@ def get_config() -> EvolusConfig:
         agent_id=os.getenv("EVOLUS_AGENT_ID", ""),
         extractor_id=os.getenv("EVOLUS_EXTRACTOR_ID", ""),
         workflow_id=os.getenv("EVOLUS_WORKFLOW_ID", ""),
+        redactor_tool=os.getenv("EVOLUS_REDACTOR_TOOL", "summarize"),
     )

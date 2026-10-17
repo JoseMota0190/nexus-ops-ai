@@ -110,6 +110,8 @@ const chequeos = [
   ["dibujo de CABA (48 barrios)", todos(".caba-barrio").length === 48],
   ["portada sin círculos (sin ruido)", todos(".mapa-portada circle").length === 0],
   ["sin la bandeja vieja apilada", !q("section.paneles")],
+  ["franja AMD siempre visible", !!q(".franja-amd")],
+  ["Sala de agentes en el pie", !!q(".sim-sala")],
   ["pie discreto del menú", true], // el pie vive dentro del menú lateral
 
   // ------------------------------------------------------ menú lateral
@@ -122,58 +124,43 @@ clic(btnMenu);
 await espera(150);
 
 chequeos.push(["menú lateral abierto", !!q(".menu-lateral")]);
-chequeos.push(["menú con 11 paneles", todos(".menu-item").length === 11]);
-chequeos.push(["ítem Sala de Agentes", tiene("Sala de Agentes")]);
-chequeos.push(["ítem KPIs", tiene("KPIs del negocio")]);
-chequeos.push(["ítem telégrafo", tiene("Telégrafo de llamadas")]);
-chequeos.push(["ítem motivos", tiene("Motivos: por qué no se vende")]);
-chequeos.push(["ítem gerencia", tiene("Reunión mensual de gerencia")]);
-chequeos.push(["ítem evolución", tiene("Evolución mes a mes")]);
-chequeos.push(["ítem ¿qué pasa si...?", tiene("¿Qué pasa si…?")]);
-chequeos.push(["ítem agente", tiene("Escuchar una llamada del agente")]);
-chequeos.push(["ítem panel AMD", tiene("Panel AMD")]);
-chequeos.push(["ítem detalle del día", tiene("Detalle del día corrido")]);
-chequeos.push(["ítem mapa", tiene("Mapa de CABA")]);
+chequeos.push(["menú con 4 sectores", todos(".menu-item").length === 4]);
+chequeos.push(["sector Gerencia", tiene("Gerencia")]);
+chequeos.push(["sector Ventas", tiene("Ventas")]);
+chequeos.push(["sector Agenda", tiene("Agenda y técnicos")]);
+chequeos.push(["sector Facturación", tiene("Facturación")]);
 
-// Cada panel tiene que abrirse y mostrar su contenido.
-async function probarPanel(id, nombreEsperado, chequeoExtra) {
-  // ☰ es un interruptor: si el menú ya está abierto, apretarlo lo CIERRA.
-  // Nos aseguramos de dejarlo abierto antes de buscar el ítem.
+// Cada sector tiene que abrir su informe del mes.
+const SECTORES = [
+  ["gerente", "Gerencia", (c) => ["informe de gerencia", c.includes("Resultado") || c.includes("mes") || c.includes("Recomendación")]],
+  ["ventas", "Ventas", (c) => ["informe de ventas", c.includes("Conversión") || c.includes("conversión") || c.includes("llamadas")]],
+  ["agenda", "Agenda", (c) => ["informe de agenda", c.includes("Instalaciones") || c.includes("Turno") || c.includes("turno")]],
+  ["facturacion", "Facturación", (c) => ["informe de facturación", c.includes("Comprobante") || c.includes("SIMULADO") || c.includes("Precisión")]],
+];
+
+for (const [id, nombre, chequeo] of SECTORES) {
   if (!q(".menu-lateral")) {
     clic(q(".tira-menu"));
-    await espera(120);
+    await espera(140);
   }
-  const item = todos(".menu-item").find((b) => b.textContent.includes(nombreEsperado));
+  const item = todos(".menu-item").find((b) => b.textContent.includes(nombre));
   clic(item);
-  await espera(260);
-  const abierto = !!q(".modal");
+  await espera(600);
+  chequeos.push([`abre el sector (${id})`, !!q(".modal")]);
   const cuerpo = q(".modal-cuerpo")?.textContent ?? "";
-  chequeos.push([`abre el panel (${id})`, abierto]);
-  if (chequeoExtra) chequeos.push(chequeoExtra(cuerpo));
-  // Cerramos con la X del modal.
+  chequeos.push(chequeo(cuerpo));
+  // Cerramos con la X del modal y dejamos el menú cerrado para el próximo.
   clic(q(".modal .menu-x"));
   await espera(150);
-  chequeos.push([`cierra el panel (${id})`, !q(".modal")]);
-  // El menú queda abierto tras elegir un ítem; lo cerramos para arrancar
-  // limpio el próximo panel.
+  chequeos.push([`cierra el sector (${id})`, !q(".modal")]);
   if (q(".menu-lateral")) {
     clic(q(".tira-menu"));
     await espera(120);
   }
 }
 
-await probarPanel("sala", "Sala de Agentes", (c) =>
-  ["sala responde", c.includes("negociando") || c.includes("charla") || c.includes("Entrando") || c.includes("Modo rápido")],
-);
-await probarPanel("kpis", "KPIs del negocio", (c) => ["KPIs cargados", c.includes("Técnicos")]);await probarPanel("llamadas", "Telégrafo", (c) => ["telégrafo con datos", c.includes("Barrio")]);
-await probarPanel("motivos", "Motivos", (c) => ["motivos cargados", c.includes("no compran") || c.includes("no contestaron")]);
-await probarPanel("gerente", "gerencia", (c) => ["acta del gerente", !!q(".modal .acta") || c.includes("gerencia")]);
-await probarPanel("evolucion", "Evolución", (c) => ["gráfico SVG", q(".modal svg") !== null]);
-await probarPanel("escenario", "Qué pasa si", (c) => ["sliders", q(".modal input[type=range]") !== null]);
-await probarPanel("agente", "llamada del agente", (c) => ["agente habla", c.includes("llamada")]);
-await probarPanel("amd", "Panel AMD", (c) => ["panel AMD", c.includes("AMD") || c.includes("TokenFactory") || c.includes("mock")]);
-await probarPanel("mapa", "Mapa de CABA", (c) => ["mapa con lista de técnicos", c.includes("zona base") || c.includes("Zona")]);
-await probarPanel("dia", "Detalle del día", () => ["detalle del día (puede estar vacío)", true]);
+// Los paneles viejos (KPIs, telégrafo, etc.) siguen en el código, pero el menú
+// ahora solo ofrece los 4 sectores (ya verificado arriba con "menú con 4 sectores").
 
 // ------------------------------------------------- correr un día y la película
 // Al mes 7 (modo sala) el día arranca EN SEGUNDO PLANO y primero se ve el cartel

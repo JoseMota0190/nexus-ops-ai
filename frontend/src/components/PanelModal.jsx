@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { PANELES } from "./MenuLateral.jsx";
+import { META_PANELES } from "./MenuLateral.jsx";
 
 /**
  * La caja que se superpone sobre el mapa. Apretar la X o el fondo de atrás
@@ -20,7 +20,7 @@ export default function PanelModal({ panel, onCerrar, children }) {
   }, [panel, onCerrar]);
 
   if (!panel) return null;
-  const meta = PANELES.find((p) => p.id === panel) ?? { icono: "📄", titulo: panel };
+  const meta = META_PANELES.find((p) => p.id === panel) ?? { icono: "📄", titulo: panel };
 
   return (
     <>
