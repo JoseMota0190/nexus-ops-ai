@@ -13,7 +13,7 @@
 
 1. **Slides:** 3 slides nada más (al principio, al final, y una con la tabla de números).
    Texto grande, fondo oscuro, logo AMD visible en la última.
-2. **Pantalla:** grabar la app corriendo de verdad (mes 1 → avanzar → mes 9) con el mouse
+2. **Pantalla:** grabar la app corriendo de verdad (mes 1 → correr los días → mes 9) con el mouse
    moviéndose lento. Se puede grabar con Win+G (Xbox Game Bar) o con OBS.
 3. **Voz:** primero intentá con la voz clonada. Si no, leelo vos con calma — no hace falta
    ser actor, hace falta que se entienda.
@@ -33,7 +33,7 @@
 | 3 | 0:26 – 0:56 | Pantalla: el enjambre de agentes (llamada + agenda) |
 | 4 | 0:56 – 1:30 | Pantalla: el Gerente IA y su red de seguridad |
 | 5 | 1:30 – 2:05 | Slide/tabla: los números de los 9 meses |
-| 6 | 2:05 – 2:28 | Pantalla: panel de métricas AMD |
+| 6 | 2:05 – 2:28 | Pantalla: franja AMD + los 4 sectores (informe, Evolus) |
 | 7 | 2:28 – 2:50 | Slide de cierre |
 
 ---
@@ -78,8 +78,9 @@ Tres íconos: 👥 salespeople · 🔧 technicians · 📊 data quality.
 
 ## ESCENA 3 — El enjambre de agentes (0:26 – 0:56)
 
-**Pantalla:** la app. Primer plano del **telégrafo de llamadas** (la lista que corre) y
-después del **mapa de CABA** con los barrios. El mouse señala mientras se habla.
+**Pantalla:** la app. El **mapa de CABA a pantalla completa** con el **logo de Nexus respirando
+al centro** y, abajo, la **Sala de Agentes** donde se ve la charla real de los agentes. El mouse
+señala mientras se habla.
 
 **Voz:**
 > A swarm of AI agents runs the whole commercial process.
@@ -106,8 +107,9 @@ después del **mapa de CABA** con los barrios. El mouse señala mientras se habl
 
 ## ESCENA 4 — El Gerente IA (0:56 – 1:30)
 
-**Pantalla:** botón **"Avanzar 1 mes"** → aparece la **tarjeta con el acta del gerente**.
-Si aparece el aviso de la red de seguridad, **señalarlo con el mouse** (es una virtud, no un error).
+**Pantalla:** botón **"▶ Correr un día"** varias veces hasta que **cierra el mes** → aparece la
+**tarjeta con el acta del Gerente IA** (también queda en el informe de **Gerencia**). Si aparece
+el aviso de la red de seguridad, **señalarlo con el mouse** (es una virtud, no un error).
 
 **Voz:**
 > Every month, the AI manager reads the numbers and moves three levers:
@@ -133,8 +135,8 @@ Si aparece el aviso de la red de seguridad, **señalarlo con el mouse** (es una 
 
 ## ESCENA 5 — Los números (1:30 – 2:05)
 
-**Pantalla:** slide con la tabla, o grabar el **gráfico de evolución** de la app creciendo
-de mes 1 a mes 9. Ideal: ver la barra de "técnicos" llegar a 10.
+**Pantalla:** slide con la tabla, o abrir el **informe del sector Gerencia** del último mes
+(caja, ingresos, costos, **técnicos = 10, meta cumplida**) y su historial de meses.
 
 **Voz:**
 > Nine simulated months.
@@ -160,26 +162,33 @@ de mes 1 a mes 9. Ideal: ver la barra de "técnicos" llegar a 10.
 
 ---
 
-## ESCENA 6 — AMD / TokenFactory (2:05 – 2:28)
+## ESCENA 6 — AMD + los 4 sectores (2:05 – 2:28)
 
-**Pantalla:** **panel de métricas AMD** (p50/p95, tokens, tokens/s) y un tiro del
-`base_url` apuntando a `notebooks.amd.com/tokenfactory`.
+**Pantalla:** la **franja AMD** abajo (siempre visible: modelo, p50/p95, tokens/s, respaldos)
+y un **informe de sector** abierto, con las etiquetas `🧠 Analizó la IA (AMD)` y
+`✍️ Redactó Evolus`.
 
 **Voz:**
-> The brain runs on an open model served by AMD TokenFactory.
-> Every single call is measured — latency, tokens, tokens per second —
-> live on the dashboard.
+> The brain runs on an open model served on AMD infrastructure.
+> A strip at the bottom shows every call measured — latency, tokens per second, fallbacks — live.
+> And the whole business reports to four sectors: management, sales, scheduling and billing.
+> Each month the program computes the numbers, AMD's model analyzes them,
+> and Evolus writes the report — with a local writer as a safety net.
 > And the forecast itself is Monte Carlo, not the language model:
 > the model talks, the math decides.
 
 **Subtítulos:**
-1. `The brain runs on an open model`
-2. `served by AMD TokenFactory.`
-3. `Every call is measured — latency, tokens,`
-4. `tokens per second — live on the dashboard.`
-5. `And the forecast itself is Monte Carlo,`
-6. `not the language model:`
-7. `the model talks, the math decides.`
+1. `The brain runs on an open model served on AMD.`
+2. `A strip at the bottom shows every call measured —`
+3. `latency, tokens per second, fallbacks — live.`
+4. `And the whole business reports to four sectors:`
+5. `management, sales, scheduling and billing.`
+6. `Each month the program computes the numbers,`
+7. `AMD's model analyzes them, and Evolus writes the report —`
+8. `with a local writer as a safety net.`
+9. `And the forecast itself is Monte Carlo,`
+10. `not the language model:`
+11. `the model talks, the math decides.`
 
 ---
 
@@ -216,25 +225,28 @@ y abajo: *Open source · Containerized · Live* + logo AMD.
 **Short description (≈2 líneas):**
 > A swarm of AI agents runs the full sales operation of a small alarm-installing
 > company in Buenos Aires — calls, scheduling, dispatch and monthly management —
-> on an open model served by AMD TokenFactory, with Monte Carlo forecasting.
+> on an open model served on AMD, with Monte Carlo forecasting.
 
 **Long description (para el formulario):**
 > nexus-ops-ai is a digital twin of "Nexus Alarm", a fictional security-alarm
-> installer in Buenos Aires. It simulates nine months of operations: 150 cold
-> (inbound) calls a day, weekly scheduling Monday–Saturday, technician dispatch
+> installer in Buenos Aires. It simulates nine months of operations: 150 inbound
+> calls a day, weekly scheduling Monday–Saturday, technician dispatch
 > computed by a zone/travel-cost algorithm, and a monthly AI manager that decides
 > how to grow from 2 to 10 technicians without running out of cash.
 >
-> The LLM (open model on AMD TokenFactory) speaks and explains; the program
+> The LLM (open model on AMD infrastructure) speaks and explains; the program
 > computes and validates. Forecasting uses Monte Carlo simulation, never the LLM
 > alone. Rejection reasons from every call are logged and fed back to the
-> manager's monthly review — that is how customer data becomes a recommendation
-> and a recommendation becomes an action.
+> manager's monthly review. The business reports to four sectors — management,
+> sales, scheduling and billing — and every month the numbers are computed, the
+> model analyzes them, and Evolus writes the report (with a local writer as
+> fallback). That is how customer data becomes a recommendation and a
+> recommendation becomes an action.
 >
 > Deliverables: public GitHub repo, containerized app (Docker), live web demo,
 > README that runs, presentation video and slides.
 
-**Tags sugeridos:** `ai-agents`, `llm`, `amd`, `tokenfactory`, `digital-twin`,
-`commerce`, `monte-carlo`, `fastapi`, `react`
+**Tags sugeridos:** `ai-agents`, `llm`, `amd`, `digital-twin`,
+`commerce`, `monte-carlo`, `agents`, `fastapi`, `react`
 
 **Categoría:** Reinvent Commerce

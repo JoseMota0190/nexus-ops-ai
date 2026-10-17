@@ -1481,6 +1481,7 @@ tbody tr:hover {
   position: relative;
   z-index: 4;
   max-height: 42vh;
+  overflow-y: auto;
 }
 
 .menu-simulacion {

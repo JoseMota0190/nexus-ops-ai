@@ -262,17 +262,24 @@ Prender Evolus sin clave (o sin `EVOLUS_WORKFLOW_ID` para contratos) da un **err
 Si algo falla (red caída, respuesta ilegible) → **cae solo al modo prueba y queda anotado**
 (en `/api/evolus/metricas`, campo `cliente.caidas_a_prueba`). Transparencia, no truco.
 
-## 4) Conectar a la pantalla (lo hace el dueño, 2 líneas)
+## 4) Conexión a la pantalla (✅ ya conectado)
 
-`router.py` está **a propósito** sin conectar. Para enchufarlo, en `backend/api.py`
-(después de crear `app = FastAPI(...)`):
+`router.py` **ya está enchufado** en `backend/api.py` (con `try/except`, así el
+simulador nunca se cae si el módulo falta):
 
 ```python
 from evolus.router import router as evolus_router
 app.include_router(evolus_router)
 ```
 
-Listo: aparecen las puertas de abajo. (Sin esa línea, el módulo existe pero no está expuesto.)
+Por eso `GET /api/evolus/salud` ya responde. **Además**, Evolus es el **redactor**
+de los informes mensuales de los 4 sectores: cuando el mes cierra, el programa
+calcula los números → la IA de AMD analiza → **Evolus redacta el documento**. Si
+Evolus está apagado o falla, redacta el **respaldo local** (`engine/redactor.py`)
+y queda anotado en el informe (`redactor: "evolus"` o `"local"`).
+
+La AI Tool que se usa para redactar se elige con `EVOLUS_REDACTOR_TOOL`
+(por defecto `summarize`; también sirven `email`, `minutes`, `rewrite`, `simplify`).
 
 ## 5) Las puertas (endpoints)
 

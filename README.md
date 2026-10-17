@@ -5,8 +5,9 @@ Un enjambre de agentes IA opera el proceso comercial completo — lead → teleo
 reparto de técnicos → contrato → comprobante — y el dueño ve KPIs en vivo, prueba escenarios
 "qué pasa si" y corre los 9 meses del plan.
 
-**Cerebro del sistema: modelo abierto servido vía TokenFactory sobre infraestructura AMD**
-(`notebooks.amd.com/tokenfactory`). La inferencia de los agentes corre en AMD.
+**Cerebro del sistema: modelo abierto servido sobre infraestructura AMD** (AMD Radeon
+Cloud / instancia GPU propia con Gemma + vLLM). La inferencia de los agentes corre en AMD.
+**Redactor de los informes: Evolus.**
 
 > **Proyecto de hackathon (AMD Developer Hackathon: ACT III / lablab.ai · track Reinvent Commerce).**
 > Todos los números, empresas, llamadas y comprobantes son **SIMULADOS**. No constituyen
@@ -42,6 +43,28 @@ que el Gerente mejora la conversión además de contratar.
 
 ---
 
+## Los 4 sectores (el menú ☰)
+
+El menú ya no es una lista de tableros sueltos: son **4 sectores**, y cada uno **rinde
+cuentas solo**. Al cerrar cada mes, el sector **calcula sus números** con el programa, la
+**IA de AMD los analiza**, **Evolus redacta el documento** y, si Evolus está apagado o falla,
+redacta un **respaldo local**. El informe queda guardado y se puede volver a generar con un clic.
+
+| Sector | Qué mira | Color |
+|---|---|---|
+| 🧾 **Gerencia** | caja, ingresos, costos, técnicos, decisión del mes | azul |
+| 📞 **Ventas** | llamadas, atención, conversión, motivos de fallo | verde |
+| 📅 **Agenda y técnicos** | ventas agendadas, instalaciones, turnos, ocupación | violeta |
+| 🧮 **Facturación** | comprobantes simulados, precisión del extractor, defectos | cyan |
+
+Los **6 meses precargados** se siembran al instante con el redactor local (sin gastar
+créditos ni tocar la red); los meses que corrés en vivo usan la IA y Evolus si están prendidos.
+
+**Transparencia:** cada informe muestra de dónde salió (`🧠 Analizó la IA (AMD)` /
+`📝 Redactor local` · `✍️ Redactó Evolus` / `✍️ Redacción local`) y su semáforo 🟢🟡🔴.
+
+---
+
 ## Cómo correrlo
 
 ### Opción A — Docker (un solo comando) ✅ recomendado
@@ -54,8 +77,9 @@ docker compose up --build
 - **API del backend:** http://localhost:8000/api/estado
 
 Arranca en **modo mock** por defecto (no gasta créditos AMD). Para usar el cerebro de
-TokenFactory de verdad: copiá `.env.example` a `.env`, poné `USE_MOCK=false` y completá
-`LLM_API_KEY` y `LLM_MODEL`, y volvé a correr `docker compose up --build`.
+AMD de verdad: copiá `.env.example` a `.env`, poné `USE_MOCK=false` y completá
+`LLM_API_KEY` y `LLM_MODEL` (el endpoint de Radeon Cloud ya viene puesto), y volvé a
+correr `docker compose up --build`.
 
 La base de datos SQLite vive en el volumen Docker `nexus_data` → **sobrevive a los reinicios**.
 Para borrar todo y empezar de cero: `docker compose down -v`.
@@ -86,14 +110,13 @@ Con `USE_MOCK=true` todo el flujo funciona sin llamar a ningún modelo real.
 
 ```powershell
 cd backend
-.venv\Scripts\python.exe tests\test_engine.py   # 20 tests del motor
-.venv\Scripts\python.exe tests\test_llm.py      #  5 tests del cliente LLM
-.venv\Scripts\python.exe tests\test_api.py      #  8 tests de la API
+# 103 tests en total (motor, LLM, API, enjambre de agentes, Evolus) — corren sin red
+.venv\Scripts\python.exe -m pytest tests -q
 .venv\Scripts\python.exe tests\mirar_negocio.py # tablero de los 9 meses
 
 cd ..\frontend
 npm run build     # compila
-npm run smoke     # 31 checks: render + placa contra el backend real
+npm run smoke     # 45 checks: render + placa contra el backend real
 ```
 
 ---
@@ -129,7 +152,12 @@ Motor de eventos (determinista, SIN LLM)
         ├── Teleoperador  (LLM AMD)  califica, agenda y anota el motivo de fallo
         ├── Coordinador de agenda     negocia turno por mensaje y confirma al cliente
         ├── Gerente IA               reunión mensual: métricas → decisión → acta
-        └── Panel del dueño           KPIs · sliders · escenarios · mapa CABA · métricas AMD
+        └── 4 SECTORES (cierre de mes)
+              programa calcula → IA de AMD analiza → Evolus redacta → respaldo local
+              informes guardados en SQLite (reportes_sector)
+        │
+  Pantalla del dueño: mapa CABA + logo · pie de simulación + Sala de agentes +
+  franja AMD siempre visible · menú ☰ con los 4 sectores
 ```
 
 **Regla del actor:** el programa calcula las ~40.000 llamadas de los 9 meses; la IA
@@ -157,13 +185,15 @@ rápida, barata y determinista, y aun así los agentes hablan de verdad.
 
 ```
 backend/
-  api.py            FastAPI: estado, resumenes, escenarios, mapa, métricas AMD...
-  store.py          SQLite (clientes, leads, llamadas, citas, decisiones, actas)
+  api.py            FastAPI: estado, resumenes, escenarios, mapa, métricas AMD, sectores...
+  store.py          SQLite (clientes, leads, llamadas, citas, decisiones, actas, informes)
   engine/           business · leads · calls · agenda · technicians · gerente · simulation
+                    sectores (informes de los 4 sectores) · redactor (respaldo local)
   llm/              client (OpenAI-compatible) · mock · cache · metrics
+  evolus/           módulo aislado: extractor de documentos + workflow + redacción
   schemas/          respuestas estructuradas de cada agente (Pydantic)
-  tests/            33 tests + mirador de negocio
-frontend/           React + Vite: pantalla del dueño
+  tests/            103 tests + mirador de negocio
+frontend/           React + Vite: mapa CABA + pie de simulación + 4 sectores
 scripts/dev.cmd     levanta backend + frontend en dos ventanas
 docker-compose.yml  backend + frontend de un solo comando
 render.yaml         Blueprint de Render
@@ -173,7 +203,8 @@ render.yaml         Blueprint de Render
 
 - **Salidas estructuradas:** cada agente devuelve JSON validado con Pydantic
   (máx. 2 reintentos + fallback en modo mock).
-- **Un único cliente LLM** compatible con OpenAI (`base_url` configurable) → TokenFactory de AMD.
+- **Un único cliente LLM** compatible con OpenAI (`base_url` configurable) → Radeon Cloud / Gemma sobre GPU de AMD.
+- **Evolus** redacta los informes de sector (con respaldo local si está apagado o falla).
 - **Modo mock y caché/replay** para reproducir la demo sin red.
 - **Métricas por llamada** (latencia p50/p95, tokens, tokens/s) expuestas en el panel AMD.
 - **Monte Carlo** y estadística para el pronóstico — el LLM nunca es el único método de cálculo.

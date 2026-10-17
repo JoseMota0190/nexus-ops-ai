@@ -1,8 +1,8 @@
 # Slides — nexus-ops-ai (contenido listo para pegar)
 
-> **Uso:** copiá cada bloque en una diapositiva. Fondo oscuro (#0E1116), texto claro,
-> logo AMD abajo a la derecha. Máximo 4 ideas por slide — lo que está escrito acá ya
-> está cortado para eso.
+> **Uso:** copiá cada bloque en una diapositiva. Fondo oscuro (`#060B1F`), texto claro
+> (`#EAF0FB`), acentos azul `#2F6BFF` / violeta `#7A5AF8`, logo AMD abajo a la derecha.
+> Máximo 4 ideas por slide — lo que está escrito acá ya está cortado para eso.
 >
 > Total: **9 slides**. Con eso alcanza y sobra para el jurado.
 > Los datos numéricos salen de `backend/tests/mirar_negocio.py` (son reproducibles).
@@ -69,11 +69,11 @@ Fast, cheap, reproducible — and the agents still speak for real.
 
 **What you see on screen**
 
-- **KPIs** in real time: sales/day, conversion, active technicians, cash
-- **"What if…" sliders**: move operators, technicians and conversion investment
-- **Animated map of Buenos Aires**: every appointment, by zone
-- **Call telegraph**: who answered, who didn't, and *why not*
-- **Manager's minutes**: the AI's monthly decision, in plain Spanish
+- **Animated map of Buenos Aires** filling the screen, with the Nexus logo breathing at its center
+- A simulation strip: **run a day** and watch the agents negotiate in the **live Agents Room**
+- A **☰ menu with 4 sectors** — management, sales, scheduling, billing — that **report themselves** every month
+- Each report: **AMD analyzes, Evolus writes**, and the numbers behind it
+- An always-on **AMD strip** at the bottom: latency, tokens/s, fallbacks
 
 ---
 
@@ -114,13 +114,17 @@ because the manager improves conversion, not just headcount.
 
 ---
 
-## SLIDE 8 — AMD
+## SLIDE 8 — AMD + Evolus
 
-**The brain runs on AMD TokenFactory**
+**The brain runs on an open model served on AMD**
 
-- Open model served through `notebooks.amd.com/tokenfactory`
-- **Every single call measured**: latency p50/p95, tokens, tokens/s — on screen
-- If the endpoint fails, the system **degrades gracefully and reports it** in the panel
+- Radeon Cloud / a GPU instance with **Gemma served by vLLM** — inference on AMD
+- **Every single call measured**: latency p50/p95, tokens, tokens/s — live on the bottom strip
+- If the endpoint fails, the system **degrades gracefully and reports it** (counted as "fallbacks")
+
+**The business reports to 4 sectors.** Each month: the program computes the
+numbers, **AMD's model analyzes them, Evolus writes the report** — with a local
+writer as a safety net.
 
 **The forecast is Monte Carlo, not the language model.**
 The model talks. The math decides.
@@ -159,5 +163,6 @@ They are **simulated and reproducible** (fixed seed). The value is the *decision
 loop*, not the specific figures. All companies and receipts are fictional.
 
 **¿Dónde está AMD en esto?**
-Every agent's reasoning goes through an open model on TokenFactory, with live
-latency and token metrics on screen — that's a hard requirement we built for.
+Every agent's reasoning goes through an open model served on AMD infrastructure,
+with live latency and token metrics on the bottom strip — that's a hard
+requirement we built for.
