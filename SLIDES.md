@@ -101,13 +101,13 @@ The warning goes **into the minutes**. Nothing is cooked.
 
 | | Month 1 | Month 9 | |
 |---|---:|---:|---:|
-| Sales / day | 6.7 | 32.0 | **×4.8** |
+| Sales / day | 6.8 | 30.5 | **×4.5** |
 | Operators | 3 | 8 | ×2.7 |
 | **Technicians** | 2 | **10** | ✅ **goal met** |
-| Revenue / month | $36.6k | $323k | **×8.8** |
+| Revenue / month | $38.6k | $313k | **×8.1** |
 | Costs / month | $9.1k | $24.4k | ×2.7 |
 
-**Revenue ×8.8 while costs grow ×2.7.**
+**Revenue ×8.1 while costs grow ×2.7.**
 
 Sales grow almost 5× with less than 3× the operators —
 because the manager improves conversion, not just headcount.

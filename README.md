@@ -31,13 +31,13 @@ Resultado de la simulación de 9 meses:
 
 | | mes 1 | mes 9 | |
 |---|---:|---:|---:|
-| Ventas/día | 6.7 | 32.0 | **×4.8** |
+| Ventas/día | 6.8 | 30.5 | **×4.5** |
 | Teleoperadores | 3 | 8 | ×2.7 |
 | Técnicos | 2 | **10** | meta alcanzada |
-| Ingresos/mes | 36.6 k | 323 k | ×8.8 |
+| Ingresos/mes | 38.6 k | 313 k | ×8.1 |
 | Costos/mes | 9.1 k | 24.4 k | ×2.7 |
 
-**Los costos crecen más lento que las ventas** (×2.7 vs ×6.4 en ingresos por instalación):
+**Los costos crecen más lento que las ventas** (×2.7 vs ×5.9 en ingresos por instalación):
 la pregunta del pitch es *"¿cómo vendo 5× más sin poner 5× más operadores?"* — la respuesta es
 que el Gerente mejora la conversión además de contratar.
 

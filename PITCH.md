@@ -141,8 +141,8 @@ el aviso de la red de seguridad, **señalarlo con el mouse** (es una virtud, no 
 **Voz:**
 > Nine simulated months.
 > Day one: six sales a day and two technicians.
-> Month nine: thirty-two sales a day and ten technicians — the goal, met.
-> Revenue grows almost nine times. Costs grow less than three.
+> Month nine: about thirty sales a day and ten technicians — the goal, met.
+> Revenue grows about eight times. Costs grow less than three.
 > That gap is the whole business case: the manager improves conversion,
 > so sales grow faster than people.
 > Nearly five times the sales — with less than three times the operators.
@@ -150,9 +150,9 @@ el aviso de la red de seguridad, **señalarlo con el mouse** (es una virtud, no 
 **Subtítulos:**
 1. `Nine simulated months.`
 2. `Day one: six sales a day and two technicians.`
-3. `Month nine: 32 sales a day and 10 technicians —`
+3. `Month nine: about 30 sales a day and 10 technicians —`
 4. `the goal, met.`
-5. `Revenue grows almost nine times.`
+5. `Revenue grows about eight times.`
 6. `Costs grow less than three.`
 7. `That gap is the whole business case:`
 8. `the manager improves conversion, so sales grow`

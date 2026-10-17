@@ -187,9 +187,11 @@ ya renombrada ✅). **Sin remote, sin push todavía** (autorizado; se sube en la
 - `backend/tests/` — **104 tests**: `test_engine.py` (22), `test_llm.py` (6), `test_api.py` (14),
   `test_enjambre.py` (14), `test_evolus.py` (48) + `mirar_negocio.py`.
 
-**Números verificados** (`mirar_negocio.py`): mes 1 → 6.7 ventas/día, 3 operadores,
-2 técnicos. Mes 9 → 32 ventas/día, 8 operadores, **10 técnicos (meta cumplida)**.
-Ingresos ×8.8 vs costos ×2.7 → **los costos crecen más lento que las ventas**.
+**Números verificados** (`mirar_negocio.py`, semilla 42 — los mismos que muestra la app): mes 1 →
+6.8 ventas/día, 3 operadores, 2 técnicos. Mes 9 → 30.5 ventas/día, 8 operadores,
+**10 técnicos (meta cumplida)**. Ingresos ×8.1 vs costos ×2.7 → **los costos crecen más lento
+que las ventas**. (Verificado también que el **modo día a día da EXACTAMENTE los mismos números**
+que el modo mes, mes por mes.)
 
 **Artefactos de entrega escritos:** `README.md` (que corre), `PITCH.md` (guion del video en
 inglés con subtítulos + textos de inscripción) y `SLIDES.md` (9 slides listas para pegar).
