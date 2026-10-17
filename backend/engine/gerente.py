@@ -333,6 +333,32 @@ def _costo(d: DecisionGerente) -> float:
     return d.cantidad * _COSTO_MEJORA
 
 
+def inversion_del_mes(store: Store, mes: int) -> float:
+    """Reconstruye la inversión del mes sumando las decisiones APROBADAS.
+
+    Se usa en el modo día a día: la reunión se corre al ABRIR el mes (igual que
+    en `correr_mes`) y el cierre llega unos días después, en otro pedido. Como
+    cada decisión aplicada quedó guardada en `decisiones_gerente`, acá se vuelve
+    a sumar su costo con la MISMA fórmula de `_costo`, sin volver a decidir nada.
+    """
+    filas = store.conn.execute(
+        "SELECT accion, valor FROM decisiones_gerente WHERE mes = ? AND aprobada = 1",
+        (mes,)).fetchall()
+    total = 0.0
+    for f in filas:
+        try:
+            n = int(float(f["valor"]))
+        except (TypeError, ValueError):
+            n = 0
+        if f["accion"] == "contratar_operadores":
+            total += n * SALARIO_OPERADOR_MES
+        elif f["accion"] == "contratar_tecnicos":
+            total += n * SALARIO_TECNICO_MES
+        elif f["accion"] == "mejorar_conversion":
+            total += n * _COSTO_MEJORA
+    return total
+
+
 def _escribir_acta(llm: LLMClient, empresa: Empresa, mes: int,
                    decisiones: list[DecisionGerente], avisos: list[str],
                    objetivo_tecnicos: int) -> dict:

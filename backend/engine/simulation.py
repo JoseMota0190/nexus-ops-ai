@@ -30,6 +30,7 @@ from .business import (
 from .calls import costo_leads, simular_dia_de_llamadas
 from .enjambre import agendar_semana_enjambre, agendar_venta_en_sala
 from .gerente import (
+    inversion_del_mes,
     reunion_mensual,
     tecnicos_objetivo_del_mes,
     ventas_objetivo_del_mes,
@@ -360,49 +361,12 @@ class Simulacion:
                 break
             self.correr_semana()
 
-        # Cierre del mes: ingresos recurrentes + costos de personal.
-        ingreso_recurrente = round(
-            e.clientes_activos * (MONITOREO_PROMEDIO + MANTENIMIENTO_ANUAL / 12), 2)
-        costo_personal = round(
-            e.operadores * SALARIO_OPERADOR_MES + e.tecnicos * SALARIO_TECNICO_MES, 2)
-        e.caja += ingreso_recurrente - costo_personal
-
-        filas = self.store.conn.execute(
-            """SELECT COUNT(*) AS n, COALESCE(SUM(ingresos),0) AS ing,
-                      COALESCE(SUM(costos),0) AS cost, COALESCE(SUM(llamadas),0) AS llam,
-                      COALESCE(SUM(atendidas),0) AS ate, COALESCE(SUM(ventas),0) AS ven,
-                      COALESCE(SUM(instalaciones),0) AS ins,
-                      MAX(sin_capacidad) AS sc,
-                      COALESCE(SUM(leads),0) AS leads
-               FROM resumen_dia WHERE semana >= ? AND semana <= ?""",
-            (inicio_semana, e.semana - 1)).fetchone()
-
-        ingresos_inst = round(float(filas["ing"]), 2)
-        costos_leads = round(float(filas["cost"]), 2)
-        costos_total = round(costo_personal + costos_leads +
-                             float(reunion["inversion"]), 2)
-
-        self.store.guardar_resumen_mes(
-            mes=mes, leads=int(filas["leads"]), llamadas=int(filas["llam"]),
-            atendidas=int(filas["ate"]), ventas=int(filas["ven"]),
-            instalaciones=int(filas["ins"]), sin_capacidad=int(filas["sc"]),
-            operadores=e.operadores, tecnicos=e.tecnicos, mejoras=e.mejoras,
-            ingresos_instalaciones=ingresos_inst,
-            ingresos_recurrentes=ingreso_recurrente,
-            costos_personal=costo_personal, costos_leads=costos_leads,
-            costos_mejoras=round(float(reunion["inversion"]), 2),
-            costos_total=costos_total, caja=round(e.caja, 2),
-            clientes_activos=e.clientes_activos)
-
-        # Los 4 sectores sacan su informe del mes (IA + Evolus si están; si no,
-        # el redactor local). Nunca frena el cierre del mes.
-        try:
-            generar_informes_mes(self.store, self.llm, mes,
-                                 usar_ia=self.reportes_con_ia)
-        except Exception:  # noqa: BLE001
-            import logging
-            logging.getLogger("nexus.engine").exception(
-                "No se pudieron generar los informes de sector del mes %s", mes)
+        # Cierre del mes: ingresos recurrentes + costos de personal + informes.
+        cierre = self._cerrar_mes(mes, inicio_semana, float(reunion["inversion"]))
+        filas = cierre["filas"]
+        ingreso_recurrente = cierre["ingreso_recurrente"]
+        costos_total = cierre["costos_total"]
+        ingresos_inst = cierre["ingresos_inst"]
 
         # avanza al próximo mes
         e.mes += 1
@@ -437,6 +401,97 @@ class Simulacion:
                 "meta_tecnicos": 10,
             },
         }
+
+    def _cerrar_mes(self, mes: int, inicio_semana: int,
+                    inversion: float) -> dict:
+        """Cierra un mes: ingresos recurrentes, costos de personal, resumen e informes.
+
+        Es el MISMO cierre que usa `correr_mes` (y el modo día a día). Devuelve los
+        números que se muestran en el resultado del mes.
+        """
+        e = self.empresa
+        ingreso_recurrente = round(
+            e.clientes_activos * (MONITOREO_PROMEDIO + MANTENIMIENTO_ANUAL / 12), 2)
+        costo_personal = round(
+            e.operadores * SALARIO_OPERADOR_MES + e.tecnicos * SALARIO_TECNICO_MES, 2)
+        e.caja += ingreso_recurrente - costo_personal
+
+        filas = self.store.conn.execute(
+            """SELECT COUNT(*) AS n, COALESCE(SUM(ingresos),0) AS ing,
+                      COALESCE(SUM(costos),0) AS cost, COALESCE(SUM(llamadas),0) AS llam,
+                      COALESCE(SUM(atendidas),0) AS ate, COALESCE(SUM(ventas),0) AS ven,
+                      COALESCE(SUM(instalaciones),0) AS ins,
+                      MAX(sin_capacidad) AS sc,
+                      COALESCE(SUM(leads),0) AS leads
+               FROM resumen_dia WHERE semana >= ? AND semana <= ?""",
+            (inicio_semana, e.semana - 1)).fetchone()
+
+        ingresos_inst = round(float(filas["ing"]), 2)
+        costos_leads = round(float(filas["cost"]), 2)
+        costos_total = round(costo_personal + costos_leads + inversion, 2)
+
+        self.store.guardar_resumen_mes(
+            mes=mes, leads=int(filas["leads"]), llamadas=int(filas["llam"]),
+            atendidas=int(filas["ate"]), ventas=int(filas["ven"]),
+            instalaciones=int(filas["ins"]), sin_capacidad=int(filas["sc"]),
+            operadores=e.operadores, tecnicos=e.tecnicos, mejoras=e.mejoras,
+            ingresos_instalaciones=ingresos_inst,
+            ingresos_recurrentes=ingreso_recurrente,
+            costos_personal=costo_personal, costos_leads=costos_leads,
+            costos_mejoras=round(inversion, 2),
+            costos_total=costos_total, caja=round(e.caja, 2),
+            clientes_activos=e.clientes_activos)
+
+        # Los 4 sectores sacan su informe del mes (IA + Evolus si están; si no,
+        # el redactor local). Nunca frena el cierre del mes.
+        try:
+            generar_informes_mes(self.store, self.llm, mes,
+                                 usar_ia=self.reportes_con_ia)
+        except Exception:  # noqa: BLE001
+            import logging
+            logging.getLogger("nexus.engine").exception(
+                "No se pudieron generar los informes de sector del mes %s", mes)
+
+        return {
+            "filas": filas, "ingreso_recurrente": ingreso_recurrente,
+            "costos_total": costos_total, "costos_personal": costo_personal,
+            "costos_leads": costos_leads, "ingresos_inst": ingresos_inst,
+            "inversion": round(inversion, 2)}
+
+    def correr_dia_completo(self) -> dict:
+        """Un día del modo DÍA A DÍA, cerrando el mes solo cuando toca.
+
+        La pantalla ya no tiene "Avanzar 1 mes": se corre día por día. Para que
+        los 4 sectores sigan rindiendo cuentas, acá se replica el ciclo de
+        `correr_mes`: la reunión del Gerente se corre al ABRIR el mes (día 1) y el
+        cierre (ingresos recurrentes, costos y los informes) al CERRARLO. La
+        inversión del mes se reconstruye de las decisiones ya guardadas, así que
+        un reinicio a mitad de mes no duplica ni pierde nada.
+        """
+        e = self.empresa
+        mes = e.mes
+        inicio_semana = (mes - 1) * SEMANAS_POR_MES + 1
+
+        # Día 1 del mes -> reunión del Gerente (igual que correr_mes).
+        if e.dia_semana == 0 and e.semana == inicio_semana:
+            reunion_mensual(self.llm, self.store, e, mes, self.rng)
+            self._guardar()
+
+        res = self.correr_dia()
+
+        # ¿Se acabó de cerrar la última semana del mes? -> cerrar el mes.
+        cerro = False
+        if e.dia_semana == 0 and e.semana == mes * SEMANAS_POR_MES + 1:
+            inversion = inversion_del_mes(self.store, mes)
+            self._cerrar_mes(mes, inicio_semana, inversion)
+            e.mes += 1
+            self._guardar()
+            cerro = True
+
+        res["mes_cerrado"] = cerro
+        if cerro:
+            res["mes_cerrado_numero"] = mes
+        return res
 
     def correr_todo(self, meses: int = MESES_TOTALES) -> list[dict]:
         salidas = []

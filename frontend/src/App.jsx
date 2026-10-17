@@ -142,7 +142,14 @@ export default function App() {
         } else if (d.resultado) {
           setDetalleDia(d.resultado);
           setPelicula(d.resultado);
-          mostrarAviso("ok", "El día terminó: mirá cómo lo cuenta la película.");
+          if (d.resultado.mes_cerrado) {
+            mostrarAviso(
+              "ok",
+              `Se cerró el mes ${d.resultado.mes_cerrado_numero}: los 4 sectores dejaron su informe.`,
+            );
+          } else {
+            mostrarAviso("ok", "El día terminó: mirá cómo lo cuenta la película.");
+          }
         }
         await refrescarTodo();
       } catch (e) {
@@ -218,6 +225,12 @@ export default function App() {
         setPelicula(r); // arranca la película (si no hay guion, se la salta)
       }
       await refrescarTodo();
+      if (r?.mes_cerrado) {
+        mostrarAviso(
+          "ok",
+          `Se cerró el mes ${r.mes_cerrado_numero}: los 4 sectores dejaron su informe.`,
+        );
+      }
     } catch (e) {
       mostrarAviso("error", e.message);
     } finally {

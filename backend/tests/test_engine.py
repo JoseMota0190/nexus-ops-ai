@@ -214,6 +214,34 @@ def test_semana_agenda_para_la_siguiente():
             assert sim.empresa.semana == 2
 
 
+def test_dia_a_dia_cierra_el_mes_solo():
+    """El modo día a día (sin botón "Avanzar 1 mes") cierra el mes solo: reunión
+    del Gerente al abrir, informe de los 4 sectores e ingresos recurrentes al cerrar."""
+    with tempfile.TemporaryDirectory() as td:
+        with _sim_en(td) as sim:
+            sim.reportes_con_ia = False  # redactor local: sin red, rápido
+            cerrado = None
+            for _ in range(SEMANAS_POR_MES * DIAS_POR_SEMANA):
+                r = sim.correr_dia_completo()
+                if r.get("mes_cerrado"):
+                    cerrado = r
+            assert cerrado is not None
+            assert cerrado["mes_cerrado_numero"] == 1
+            # Avanzó al mes 2 y el resumen del mes quedó guardado.
+            assert sim.empresa.mes == 2
+            fila = sim.store.conn.execute(
+                "SELECT ventas FROM resumen_mes WHERE mes = 1").fetchone()
+            assert fila is not None and fila["ventas"] > 0
+            # Los 4 sectores sacaron su informe del mes 1.
+            sectores = sim.store.conn.execute(
+                "SELECT COUNT(DISTINCT sector) AS n FROM reportes_sector WHERE mes = 1"
+            ).fetchone()["n"]
+            assert sectores == 4
+            # La reunión del Gerente dejó su acta del mes (prueba de que corrió).
+            assert sim.store.conn.execute(
+                "SELECT COUNT(*) FROM actas_gerente WHERE mes = 1").fetchone()[0] == 1
+
+
 def test_reiniciar_no_pierde_determinismo():
     with tempfile.TemporaryDirectory() as td:
         a = _sim(td, semilla=11)

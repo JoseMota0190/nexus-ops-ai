@@ -200,9 +200,11 @@ def correr_todo(meses: int = 6) -> dict:
 
 @app.post("/api/dia")
 def correr_un_dia() -> dict:
-    """Corre un día. Sin tope: la app puede seguir día por día indefinidamente."""
+    """Corre un día. Cuando se acaba la última semana del mes, el mes se cierra
+    solo: reunión del Gerente (al abrir), informes de los 4 sectores e ingresos
+    recurrentes (al cerrar). Sin tope: se puede seguir día por día indefinidamente."""
     _dia_ocupado_o_409("correr un día")
-    return sim.correr_dia()
+    return sim.correr_dia_completo()
 
 
 @app.post("/api/dia/en-vivo")
@@ -222,7 +224,7 @@ def dia_en_vivo() -> dict:
 
     def _trabajo() -> None:
         try:
-            res = sim.correr_dia()
+            res = sim.correr_dia_completo()
             with _DIA_LOCK:
                 _DIA.update({"corriendo": False, "listo": True, "resultado": res})
         except Exception as exc:  # noqa: BLE001 — el error se muestra, no tumba la app
