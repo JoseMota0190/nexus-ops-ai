@@ -95,6 +95,8 @@ export const api = {
   llamadaEnVivo: () => pedir("/api/llamada_en_vivo", { method: "POST", body: "{}" }),
   avanzarMes: () => pedir("/api/mes", { method: "POST", body: "{}" }),
   avanzarDia: () => pedir("/api/dia", { method: "POST", body: "{}" }),
+  diaEnVivo: () => pedir("/api/dia/en-vivo", { method: "POST", body: "{}" }),
+  diaEnVivoEstado: () => pedir("/api/dia/en-vivo"),
   correrTodo: (meses = 6) => pedir(`/api/todo?meses=${meses}`, { method: "POST", body: "{}" }),
   reiniciar: () => pedir("/api/reiniciar", { method: "POST", body: "{}" }),
   sala: (limite = 60) => pedir(`/api/sala?limite=${limite}`),

@@ -9,6 +9,7 @@ Arranque:  `uvicorn api:app --reload`  (desde `backend/`)
 from __future__ import annotations
 
 import random
+import threading
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -50,6 +51,21 @@ app.add_middleware(
 store = Store(DATA)
 llm = LLMClient()
 sim = Simulacion(store, llm)
+
+# El DÍA EN VIVO: el que corre en segundo plano, negociando venta por venta, para
+# que la pantalla vea a los agentes hablar mientras piensan (AMD tarda ~15 s por
+# agente y un día del mes 7 tiene ~24 ventas: son minutos). Mientras corre, no se
+# deja arrancar otro día ni correr meses.
+_DIA_LOCK = threading.Lock()
+_DIA: dict = {"corriendo": False, "listo": False, "error": None, "resultado": None}
+
+
+def _dia_ocupado_o_409(accion: str) -> None:
+    if _DIA["corriendo"]:
+        raise HTTPException(
+            409, f"Hay un día corriendo en vivo. Esperá a que termine para {accion}.")
+
+
 sim.inicializar()
 # Primera vez que arranca (base recién creada) → corren solos los primeros 6 meses,
 # como quedó decidido. Los 3 últimos los mueve el dueño con "Avanzar 1 mes".
@@ -143,12 +159,14 @@ def avanzar_mes() -> dict:
     La app no tiene tope de meses: pasada la meta, la empresa se ESTABILIZA y
     sigue operando (el Gerente deja de contratar sin control).
     """
+    _dia_ocupado_o_409("correr un mes")
     return sim.correr_mes()
 
 
 @app.post("/api/todo")
 def correr_todo(meses: int = 6) -> dict:
     """Corre de una los primeros `meses` (la fase automática: 6 meses solos)."""
+    _dia_ocupado_o_409("correr varios meses")
     salidas = []
     for _ in range(max(0, meses)):
         salidas.append(sim.correr_mes())
@@ -159,7 +177,53 @@ def correr_todo(meses: int = 6) -> dict:
 @app.post("/api/dia")
 def correr_un_dia() -> dict:
     """Corre un día. Sin tope: la app puede seguir día por día indefinidamente."""
+    _dia_ocupado_o_409("correr un día")
     return sim.correr_dia()
+
+
+@app.post("/api/dia/en-vivo")
+def dia_en_vivo() -> dict:
+    """Arranca el día en SEGUNDO PLANO, para ver a los agentes negociar en vivo.
+
+    Devuelve enseguida (no bloquea la pantalla). La base se va guardando venta por
+    venta (Store.commit_ahora), así el panel de la Sala muestra la charla mientras
+    los agentes todavía están pensando. Cuando termina, `GET /api/dia/en-vivo`
+    trae el resultado completo (el detalle del día y la película).
+    """
+    with _DIA_LOCK:
+        if _DIA["corriendo"]:
+            raise HTTPException(409, "Ya hay un día corriendo en vivo.")
+        _DIA.update({"corriendo": True, "listo": False, "error": None,
+                     "resultado": None})
+
+    def _trabajo() -> None:
+        try:
+            res = sim.correr_dia()
+            with _DIA_LOCK:
+                _DIA.update({"corriendo": False, "listo": True, "resultado": res})
+        except Exception as exc:  # noqa: BLE001 — el error se muestra, no tumba la app
+            with _DIA_LOCK:
+                _DIA.update({"corriendo": False, "listo": True, "error": str(exc)})
+
+    threading.Thread(target=_trabajo, name="dia-en-vivo", daemon=True).start()
+    return {"corriendo": True}
+
+
+@app.get("/api/dia/en-vivo")
+def dia_en_vivo_estado() -> dict:
+    """¿Cómo va el día en vivo? Progreso + resultado cuando termina."""
+    with _DIA_LOCK:
+        estado_dia = {
+            "corriendo": _DIA["corriendo"],
+            "listo": _DIA["listo"],
+            "error": _DIA["error"],
+            "resultado": _DIA["resultado"],
+        }
+    estado_dia["progreso"] = {
+        "agendadas_hoy": getattr(sim, "_agendadas_dia", 0),
+        "negociados_hoy": getattr(sim, "_negociados_dia", 0),
+    }
+    return estado_dia
 
 
 @app.post("/api/modo")
@@ -172,6 +236,7 @@ def modo(m: ModoSim) -> dict:
 
 @app.post("/api/reiniciar")
 def reiniciar() -> dict:
+    _dia_ocupado_o_409("reiniciar")
     sim.empresa = sim.inicializar(reiniciar=True)
     sim.enjambre_desde = 7
     return sim.estado()

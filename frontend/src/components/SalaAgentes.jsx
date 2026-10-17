@@ -31,7 +31,7 @@ function agrupar(lineas) {  // Cada conversación arranca cuando habla el teleop
   return charlas.reverse(); // la más reciente, arriba
 }
 
-export default function SalaAgentes({ estado }) {
+export default function SalaAgentes({ estado, refrescoMs = 0 }) {
   const [lineas, setLineas] = useState(null);
   const [error, setError] = useState(null);
   const [refrescando, setRefrescando] = useState(false);
@@ -52,6 +52,13 @@ export default function SalaAgentes({ estado }) {
   useEffect(() => {
     traer();
   }, [traer]);
+
+  // En el DÍA EN VIVO, la sala se refresca sola para que las burbujas aparezcan.
+  useEffect(() => {
+    if (!refrescoMs) return undefined;
+    const t = setInterval(traer, refrescoMs);
+    return () => clearInterval(t);
+  }, [traer, refrescoMs]);
 
   const enjambre = estado?.enjambre;
   const activo = enjambre ? enjambre.activo : null;

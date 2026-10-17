@@ -230,6 +230,32 @@ def test_modo_rapido_no_negocia_nada():
         sim.store.close()
 
 
+def test_commit_ahora_muestra_la_charla_antes_de_cerrar_el_dia():
+    """Día en vivo: lo escrito se ve desde OTRA conexión aunque la transacción siga abierta.
+
+    Es lo que hace que la Sala de Agentes muestre las burbujas mientras los agentes
+    todavía están pensando, en vez de aparecer todas juntas al final.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        ruta = Path(tmp) / "t.db"
+        escritor = Store(ruta)
+        pantalla = Store(ruta)  # segunda conexión, como si fuera la pantalla consultando
+
+        def visibles() -> int:
+            return pantalla.conn.execute(
+                "SELECT COUNT(*) n FROM mensajes WHERE tipo='sala_agentes'"
+            ).fetchone()["n"]
+
+        with escritor.transaction():
+            escritor.mensaje("sala_agentes", "agenda", "cliente 1",
+                             "te tomo el turno del martes", 7, 2, 0)
+            assert visibles() == 0, "sin commit_ahora todavía no tiene que verse"
+            escritor.commit_ahora()
+            assert visibles() == 1, "commit_ahora tiene que hacerlo visible al instante"
+        escritor.close()
+        pantalla.close()
+
+
 if __name__ == "__main__":
     test_operador_propone_el_turno_que_prefiere_el_cliente()
     test_agenda_elige_el_turno_libre_que_pidio_el_cliente()
@@ -244,4 +270,5 @@ if __name__ == "__main__":
     test_el_enjambre_nunca_supera_la_capacidad()
     test_cada_venta_se_negocia_en_el_dia_modo_sala()
     test_modo_rapido_no_negocia_nada()
+    test_commit_ahora_muestra_la_charla_antes_de_cerrar_el_dia()
     print("OK: tests de la Sala de Agentes (enjambre) pasaron.")

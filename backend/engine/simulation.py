@@ -126,6 +126,9 @@ class Simulacion:
         for linea in charla.lineas:
             self.store.mensaje("sala_agentes", linea["agente"], charla.cliente,
                                linea["dice"], e.mes, semana, dia)
+        # En vivo: que la charla se vea YA en la pantalla, sin esperar a que
+        # termine el día entero (ver Store.commit_ahora).
+        self.store.commit_ahora()
         self._sala_dia.append(self._charla_dict(charla))
         self._agendadas_dia += 1
         if charla.negociado:
@@ -450,6 +453,9 @@ class Simulacion:
                 "activo": self._enjambre_on(),
                 "desde_mes": self.enjambre_desde,
                 "modo_sala": self.modo_sala,
+                # Progreso del día en vivo: cuántas ventas ya negoció la sala hoy.
+                "agendadas_hoy": getattr(self, "_agendadas_dia", 0),
+                "negociados_hoy": getattr(self, "_negociados_dia", 0),
             },
             "kpis": kpis,
         }

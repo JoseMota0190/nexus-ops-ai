@@ -2,6 +2,7 @@
 import os
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -118,6 +119,38 @@ def test_escenario_sliders_calcula():
     assert lleno["meta_cumplida"] is True
 
 
+def test_dia_en_vivo_corre_en_segundo_plano_y_termina():
+    """El día en vivo arranca al instante (no bloquea) y al final trae el resultado."""
+    client.post("/api/modo", json={"rapido": True})  # en modo rápido el día vuela
+    assert client.post("/api/dia/en-vivo").status_code == 200, "tiene que arrancar ya"
+
+    d = None
+    for _ in range(400):
+        d = client.get("/api/dia/en-vivo").json()
+        if d["listo"]:
+            break
+        time.sleep(0.05)
+
+    assert d and d["listo"], "el día en vivo nunca terminó"
+    assert d["error"] is None, d["error"]
+    assert d["resultado"] and "pelicula" in d["resultado"]
+    assert "progreso" in d
+
+
+def test_no_se_puede_correr_dos_cosas_juntas():
+    """Mientras hay un día en vivo, otro 'correr un día' tiene que rebotar (409)."""
+    from api import _DIA, _DIA_LOCK
+
+    with _DIA_LOCK:
+        _DIA["corriendo"] = True
+    try:
+        assert client.post("/api/dia").status_code == 409
+        assert client.post("/api/mes").status_code == 409
+    finally:
+        with _DIA_LOCK:
+            _DIA["corriendo"] = False
+
+
 if __name__ == "__main__":
     test_estado_inicial()
     test_avanzar_mes_devuelve_acta_y_numeros()
@@ -129,4 +162,6 @@ if __name__ == "__main__":
     test_reiniciar_vuelve_al_inicio()
     test_todos_los_get_de_la_pantalla_responden()
     test_escenario_sliders_calcula()
-    print("OK: 10 tests de la API pasaron.")
+    test_dia_en_vivo_corre_en_segundo_plano_y_termina()
+    test_no_se_puede_correr_dos_cosas_juntas()
+    print("OK: 12 tests de la API pasaron.")

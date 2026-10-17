@@ -163,6 +163,9 @@ class Store:
         self.conn = sqlite3.connect(str(self.path), check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
         self.conn.execute("PRAGMA journal_mode=WAL")
+        # Si dos hilos tocan la base a la vez (el día en vivo + la pantalla
+        # consultando), que el segundo ESPERE en vez de tirar error.
+        self.conn.execute("PRAGMA busy_timeout=5000")
         self.conn.executescript(SCHEMA)
         self.conn.commit()
         self._tx = 0  # profundidad de la transacción abierta (ver transaction())
@@ -190,6 +193,16 @@ class Store:
             self._tx -= 1
         if self._tx == 0:
             self.conn.commit()
+
+    def commit_ahora(self) -> None:
+        """Guarda YA lo escrito, aunque estemos dentro de una transacción.
+
+        Se usa en el DÍA EN VIVO: la charla de la Sala de Agentes tiene que verse
+        en la pantalla mientras el día sigue corriendo, no recién al final. Es un
+        commit parcial (el de cierre se hace igual); si el día se cortara, queda
+        lo negociado hasta ahí, que es mejor que nada.
+        """
+        self.conn.commit()
 
     def _exec(self, sql: str, params: Iterable[Any] | dict = ()) -> sqlite3.Cursor:
         if isinstance(params, dict):

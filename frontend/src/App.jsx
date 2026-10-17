@@ -41,6 +41,7 @@ export default function App() {
   const [pelicula, setPelicula] = useState(null);
   const [velocidad, setVelocidad] = useState(3);
   const [rapido, setRapido] = useState(false); // interruptor: modo rápido vs sala
+  const [enVivo, setEnVivo] = useState(null); // progreso del día que corre en segundo plano
 
   const vivo = useRef(true);
   const avisoTimer = useRef(null);
@@ -112,6 +113,48 @@ export default function App() {
     if (estado?.enjambre) setRapido(estado.enjambre.modo_sala === false);
   }, [estado?.enjambre?.modo_sala]);
 
+  // DÍA EN VIVO: si la Sala está negociando, el día corre en segundo plano y acá
+  // preguntamos cómo va cada 2 s, para que las burbujas vayan apareciendo. Cuando
+  // termina, abrimos la película del día (que ya trae todos los eventos).
+  const hayVivo = enVivo !== null;
+  useEffect(() => {
+    if (!hayVivo) return undefined;
+    let cancelado = false;
+
+    const tic = async () => {
+      try {
+        const d = await api.diaEnVivoEstado();
+        if (cancelado || !vivo.current) return;
+        if (d.progreso) setEnVivo(d.progreso);
+        if (!d.listo) return;
+        cancelado = true;
+        setEnVivo(null);
+        setOcupado(null);
+        if (d.error) {
+          mostrarAviso("error", `El día en vivo se cortó: ${d.error}`);
+        } else if (d.resultado) {
+          setDetalleDia(d.resultado);
+          setPelicula(d.resultado);
+          mostrarAviso("ok", "El día terminó: mirá cómo lo cuenta la película.");
+        }
+        await refrescarTodo();
+      } catch (e) {
+        if (!cancelado && vivo.current) {
+          setEnVivo(null);
+          setOcupado(null);
+          mostrarAviso("error", e.message);
+        }
+      }
+    };
+
+    const t = setInterval(tic, 2000);
+    tic();
+    return () => {
+      cancelado = true;
+      clearInterval(t);
+    };
+  }, [hayVivo, refrescarTodo, mostrarAviso]);
+
   // ------------------------------------------------------------- acciones
   async function correr(que, funcion, mensajeOk) {
     if (ocupado) return undefined;
@@ -141,8 +184,26 @@ export default function App() {
   // a cámara lenta, para que el dueño vea la operación respirando.
   async function correrUnDia() {
     if (ocupado || pelicula) return;
-    setOcupado("dia");
     setAviso(null);
+
+    // Modo sala (mes 7 en adelante): los agentes negocian venta por venta y AMD
+    // piensa lento, así que el día corre en SEGUNDO PLANO y lo vemos llenarse en
+    // vivo. El resto lo sigue el efecto del día en vivo (el que pregunta cada 2 s).
+    if (estado?.enjambre?.activo) {
+      setOcupado("dia");
+      setEnVivo({ agendadas_hoy: 0, negociados_hoy: 0 });
+      try {
+        await api.diaEnVivo();
+      } catch (e) {
+        setEnVivo(null);
+        setOcupado(null);
+        mostrarAviso("error", e.message);
+      }
+      return;
+    }
+
+    // Modo rápido: el día se resuelve al toque.
+    setOcupado("dia");
     try {
       const r = await api.avanzarDia();
       if (r && typeof r === "object" && r.leads !== undefined) {
@@ -356,6 +417,32 @@ export default function App() {
           <div className="aviso aviso-info aviso-flotante">
             <span>💤</span>
             <span>El motor dejó de responder por un momento: sigo reintentando solo.</span>
+          </div>
+        ) : null}
+
+        {/* El DÍA EN VIVO: mientras los agentes negocian, tapamos el mapa con la Sala
+            y dejamos que las burbujas vayan apareciendo (AMD piensa lento, ~15 s). */}
+        {enVivo ? (
+          <div className="vivo-envoltorio">
+            <div className="vivo-caja">
+              <div className="vivo-cab">
+                <span className="sala-pill sala-on">
+                  <i className="sala-punto" /> DÍA EN VIVO · los agentes están negociando
+                </span>
+                <span className="vivo-progreso">
+                  {enVivo.agendadas_hoy > 0
+                    ? `${enVivo.agendadas_hoy} ${enVivo.agendadas_hoy === 1 ? "venta agendada" : "ventas agendadas"} hoy`
+                    : "arrancando el día…"}
+                </span>
+              </div>
+              <p className="vivo-bajada">
+                El cerebro corre sobre AMD y piensa lento (unos 15 s por agente), así que
+                el día se va armando de a poco. Mirá cómo se llena la sala.
+              </p>
+              <div className="vivo-sala">
+                <SalaAgentes estado={estado} refrescoMs={2500} />
+              </div>
+            </div>
           </div>
         ) : null}
 

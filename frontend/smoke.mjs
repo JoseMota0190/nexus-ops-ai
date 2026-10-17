@@ -181,11 +181,25 @@ await probarPanel("mapa", "Mapa de CABA", (c) => ["mapa con lista de técnicos",
 await probarPanel("dia", "Detalle del día", () => ["detalle del día (puede estar vacío)", true]);
 
 // ------------------------------------------------- correr un día y la película
+// Al mes 7 (modo sala) el día arranca EN SEGUNDO PLANO y primero se ve el cartel
+// "día en vivo"; cuando termina, sale la película. En modo rápido sale directo.
 clic(q(".menu-simulacion .boton-primario"));
-await espera(4000);
+await espera(2500);
 
-const hayPelicula = !!q(".pelicula-envoltorio");
 chequeos.push(["corre un día sin explotar", true]);
+chequeos.push([
+  "arranca el día (cartel en vivo o película)",
+  !!q(".vivo-envoltorio") || !!q(".pelicula-envoltorio"),
+]);
+if (q(".vivo-envoltorio")) {
+  chequeos.push(["el cartel dice DÍA EN VIVO", (q(".vivo-cab")?.textContent ?? "").includes("VIVO")]);
+}
+
+let hayPelicula = !!q(".pelicula-envoltorio");
+for (let i = 0; i < 60 && !hayPelicula; i++) {
+  await espera(1000);
+  hayPelicula = !!q(".pelicula-envoltorio");
+}
 chequeos.push(["arranca la película del día", hayPelicula]);
 if (hayPelicula) {
   chequeos.push(["reloj de la película", /^\d{2}:\d{2}$/.test(q(".pelicula-hora")?.textContent ?? "")]);
