@@ -347,8 +347,23 @@ export default function App() {
           </div>
         </div>
 
-        {/* El menú de simulación: lo único que el dueño toca en la pantalla inicial. */}
-        <div className="menu-simulacion">
+        {aviso ? (
+          <div className={`aviso aviso-${aviso.tipo} aviso-flotante`}>
+            <span>{aviso.tipo === "ok" ? "✅" : "⚠️"}</span>
+            <span>{aviso.texto}</span>
+          </div>
+        ) : null}
+
+        {errEstado && estado ? (
+          <div className="aviso aviso-info aviso-flotante">
+            <span>💤</span>
+            <span>El motor dejó de responder por un momento: sigo reintentando solo.</span>
+          </div>
+        ) : null}
+      </main>
+
+      {/* El cuadro de simulación: abajo del mapa, lo único que el dueño toca. */}
+      <div className="menu-simulacion">
           <button
             className="boton boton-primario"
             onClick={correrUnDia}
@@ -380,45 +395,7 @@ export default function App() {
           >
             {rapido ? "⚡ Modo rápido" : "🗣️ Modo sala"}
           </button>
-
-          <span className="menu-sim-sep" />
-
-          <button
-            className="boton boton-fantasma boton-chico"
-            onClick={avanzarMes}
-            disabled={!!ocupado || !!pelicula}
-          >
-            Avanzar 1 mes
-          </button>
-          <button
-            className="boton boton-fantasma boton-chico"
-            onClick={correrSeis}
-            disabled={!!ocupado || !!pelicula}
-          >
-            6 meses
-          </button>
-          <button
-            className="boton boton-fantasma boton-chico"
-            onClick={reiniciar}
-            disabled={!!ocupado || !!pelicula}
-          >
-            Reiniciar
-          </button>
         </div>
-
-        {aviso ? (
-          <div className={`aviso aviso-${aviso.tipo} aviso-flotante`}>
-            <span>{aviso.tipo === "ok" ? "✅" : "⚠️"}</span>
-            <span>{aviso.texto}</span>
-          </div>
-        ) : null}
-
-        {errEstado && estado ? (
-          <div className="aviso aviso-info aviso-flotante">
-            <span>💤</span>
-            <span>El motor dejó de responder por un momento: sigo reintentando solo.</span>
-          </div>
-        ) : null}
 
         {/* El DÍA EN VIVO: mientras los agentes negocian, tapamos el mapa con la Sala
             y dejamos que las burbujas vayan apareciendo (AMD piensa lento, ~15 s). */}
@@ -459,7 +436,6 @@ export default function App() {
             />
           </div>
         ) : null}
-      </main>
 
       <MenuLateral
         abierto={menuAbierto}

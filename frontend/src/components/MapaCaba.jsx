@@ -1,23 +1,39 @@
 import { useEffect, useMemo, useState } from "react";
 import { DIAS } from "../format.js";
+import { BARRIOS_CABA } from "../caba.js";
 
 const W = 720;
 const H = 520;
-const PAD = { izq: 58, der: 150, arr: 44, aba: 52 };
+// El panel necesita aire a la derecha para los rótulos de los barrios; la
+// portada va centrada y limpia.
+const PAD_PANEL = { izq: 58, der: 150, arr: 44, aba: 52 };
+const PAD_PORTADA = { izq: 34, der: 34, arr: 30, aba: 30 };
 const COLORES = ["#ff5a36", "#4aa8ff", "#35d39a", "#ffc53d", "#c77dff", "#ff9f6e",
   "#59e0c5", "#ff6fae", "#8ad36a", "#7aa2ff"];
 
 // CABA está a ~34.6° de latitud: 1° de longitud mide 0.823° "de latitud".
 const FACTOR_LON = 0.823;
 
-function proyectador(zonas) {
+// El mapa REAL de la Ciudad: los 48 barrios con sus polígonos (ver src/caba.js).
+// Aplanamos todos sus puntos para que el encuadre del dibujo los contenga siempre.
+const PUNTOS_CABA = [];
+for (const barrio of BARRIOS_CABA) {
+  for (const anillo of barrio.anillos) {
+    for (const [lon, lat] of anillo) PUNTOS_CABA.push([lat, lon]);
+  }
+}
+
+function proyectador(zonas, extra = [], pad = PAD_PANEL) {
   const puntos = Object.entries(zonas)
     .filter(([, z]) => z && z.lat != null && z.lon != null)
     .map(([, z]) => z);
-  if (puntos.length === 0) return null;
+  // El mapa (barrios) entra en el encuadre: así el dibujo queda siempre adentro.
+  const extras = extra.map(([lat, lon]) => ({ lat, lon }));
+  const todos = puntos.concat(extras);
+  if (todos.length === 0) return null;
 
-  const lats = puntos.map((p) => p.lat);
-  const lons = puntos.map((p) => p.lon);
+  const lats = todos.map((p) => p.lat);
+  const lons = todos.map((p) => p.lon);
   const minLat = Math.min(...lats);
   const maxLat = Math.max(...lats);
   const minLon = Math.min(...lons);
@@ -25,15 +41,15 @@ function proyectador(zonas) {
   const dlat = Math.max(0.001, maxLat - minLat);
   const dlon = Math.max(0.001, maxLon - minLon);
 
-  const dispW = W - PAD.izq - PAD.der;
-  const dispH = H - PAD.arr - PAD.aba;
+  const dispW = W - pad.izq - pad.der;
+  const dispH = H - pad.arr - pad.aba;
   const mundoW = dlon * FACTOR_LON;
   const mundoH = dlat;
   const k = Math.min(dispW / mundoW, dispH / mundoH);
   const drawW = mundoW * k;
   const drawH = mundoH * k;
-  const x0 = PAD.izq + (dispW - drawW) / 2;
-  const y0 = PAD.arr + (dispH - drawH) / 2;
+  const x0 = pad.izq + (dispW - drawW) / 2;
+  const y0 = pad.arr + (dispH - drawH) / 2;
 
   return (lat, lon) => ({
     x: x0 + (lon - minLon) * FACTOR_LON * k,
@@ -56,7 +72,30 @@ export default function MapaCaba({ mapa, cargando, error, portada = false }) {
   const zonas = mapa?.zonas ?? {};
   const citas = mapa?.citas ?? [];
   const tecnicos = mapa?.tecnicos ?? [];
-  const punto = useMemo(() => proyectador(zonas), [zonas]);
+  const punto = useMemo(
+    () => proyectador(zonas, PUNTOS_CABA, portada ? PAD_PORTADA : PAD_PANEL),
+    [zonas, portada],
+  );
+
+  // Cada barrio como un path SVG (una sola vez, salvo que cambie el encuadre).
+  const caminosBarrios = useMemo(() => {
+    if (!punto) return [];
+    return BARRIOS_CABA.map((barrio) => ({
+      nombre: barrio.nombre,
+      comuna: barrio.comuna,
+      d: barrio.anillos
+        .map(
+          (anillo) =>
+            anillo
+              .map(([lon, lat], i) => {
+                const { x, y } = punto(lat, lon);
+                return `${i === 0 ? "M" : "L"}${x.toFixed(1)} ${y.toFixed(1)}`;
+              })
+              .join(" ") + " Z",
+        )
+        .join(" "),
+    }));
+  }, [punto]);
 
   const porDia = useMemo(() => {
     const cuenta = {};
@@ -105,7 +144,15 @@ export default function MapaCaba({ mapa, cargando, error, portada = false }) {
       role="img"
       aria-label="Mapa de CABA con las instalaciones por barrio"
     >
-      {punto
+      <g className="caba-barrios">
+        {caminosBarrios.map((b) => (
+          <path key={b.nombre} className="caba-barrio" d={b.d}>
+            <title>{b.nombre}</title>
+          </path>
+        ))}
+      </g>
+
+      {!portada && punto
         ? Object.entries(zonas).map(([nombre, z]) => {
             if (z.lat == null || z.lon == null) return null;
             const { x, y } = punto(z.lat, z.lon);
@@ -141,7 +188,7 @@ export default function MapaCaba({ mapa, cargando, error, portada = false }) {
           })
         : null}
 
-      {punto
+      {!portada && punto
         ? tecnicos.map((t, i) => {
             const z = zonas[t.zona_base];
             if (!z) return null;
@@ -217,15 +264,6 @@ export default function MapaCaba({ mapa, cargando, error, portada = false }) {
     return (
       <div className="mapa-portada">
         {dibujo}
-        <div className="mapa-portada-barra">
-          <span className="mapa-portada-titulo">Mapa de CABA · semana {mapa.semana ?? "—"}</span>
-          {chipsDias}
-          <span className="mapa-portada-dato">
-            <b>{totalHoy}</b> instalaciones {DIAS[diaActivo]?.toLowerCase()} ·{" "}
-            <b>{barriosActivos}</b> barrios · <b>{tecnicos.length}</b> técnicos ·{" "}
-            <b>{mapa.capacidad_dia ?? 0}</b> cupos/día
-          </span>
-        </div>
       </div>
     );
   }

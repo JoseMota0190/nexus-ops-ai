@@ -96,13 +96,10 @@ function clic(el) {
 const chequeos = [
   // ---------------------------------------------------------- portada
   ["arrancó el render", raiz().children.length > 0],
-  // La tira pega etiqueta y valor SIN espacio ("Mes7 / 9Semana25"), así que no
-  // puede haber borde de palabra después del 9: sigue pegado a "Semana".
-  ["tira fina con el mes", tiene("Mes") && /Mes\s*\d/.test(texto())],
-  ["tira: técnicos", tiene("Técnicos")],
-  ["tira: ventas por día", tiene("Ventas por día")],
-  ["tira: plata en caja", tiene("En caja")],
-  ["tira: clientes", tiene("Clientes")],
+  // El header queda limpio: la marca y el botón del menú (las métricas viven adentro).
+  ["header con la marca", tiene("Nexus")],
+  ["header con el botón del menú", !!q(".tira-menu")],
+  ["header sin la tira de números", !q(".tira-datos")],
   ["logo de Nexus centrado", !!q(".logo-centro") && tiene("NEXUS")],
   ["menú de simulación", !!q(".menu-simulacion")],
   ["botón correr un día", tiene("Correr un día")],
@@ -110,10 +107,8 @@ const chequeos = [
   ["velocidad 6 min", tiene("6 min")],
   ["velocidad 9 min", tiene("9 min")],
   ["mapa a pantalla completa", !!q(".mapa-portada")],
-  ["barra del mapa", !!q(".mapa-portada-barra")],
-  ["días de la semana en el mapa", tiene("Lun") && tiene("Sáb")],
-  ["gráfico del mapa (círculos)", todos("circle").length > 0],
-  ["barrios con nombre", tiene("Palermo") || tiene("Nunez") || tiene("Belgrano")],
+  ["dibujo de CABA (48 barrios)", todos(".caba-barrio").length === 48],
+  ["portada sin círculos (sin ruido)", todos(".mapa-portada circle").length === 0],
   ["sin la bandeja vieja apilada", !q("section.paneles")],
   ["pie discreto del menú", true], // el pie vive dentro del menú lateral
 
