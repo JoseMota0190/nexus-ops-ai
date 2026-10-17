@@ -53,8 +53,19 @@ sim = Simulacion(store, llm)
 sim.inicializar()
 # Primera vez que arranca (base recién creada) → corren solos los primeros 6 meses,
 # como quedó decidido. Los 3 últimos los mueve el dueño con "Avanzar 1 mes".
+#
+# Red de seguridad: si la siembra truena (cerebro caído, JSON inesperado, lo que
+# sea), el programa NO se apaga. Se anota el error y la API sigue viva con la
+# base que haya — una demo a medio cargar siempre es mejor que una pantalla en
+# blanco frente a un jurado.
 if not store.conn.execute("SELECT 1 FROM resumen_mes LIMIT 1").fetchone():
-    sim.correr_todo(MESES_AUTOMATICOS)
+    try:
+        sim.correr_todo(MESES_AUTOMATICOS)
+    except Exception as exc:  # noqa: BLE001 — nada debe apagar el arranque
+        import logging
+        logging.getLogger("nexus.api").exception(
+            "La siembra de los primeros %s meses falló; se arranca igual: %s",
+            MESES_AUTOMATICOS, exc)
 _rng = random.Random(2026)
 
 

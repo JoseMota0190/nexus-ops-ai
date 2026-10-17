@@ -72,6 +72,10 @@ class LLMClient:
         except LLMError as e:
             if self.config.use_mock or self.replay:
                 raise  # en mock el error es real (bug), no lo tapamos
+            # La respuesta mala (venía de la caché o recién de AMD) se tira,
+            # para que la próxima consulta vuelva a ir al cerebro en vez de
+            # repetir el mismo error en loop.
+            _cache.discard(agent, self.config.model or "mock", messages)
             _log.warning("AMD/TokenFactory no respondió (%s) -> respaldo local", e)
             return self._validate(agent, self._complete_fallback(agent, messages), schema)
 
@@ -108,15 +112,20 @@ class LLMClient:
     def _raw_complete(self, agent: str, messages: list[dict[str, str]]) -> str:
         model = self.config.model or "mock"
 
-        # 1) Caché/replay tiene prioridad (reproducibilidad).
+        # 1) Modo mock: NO toca la caché. La caché guarda respuestas del
+        #    cerebro real para reproducir la demo sin red; si el mock la
+        #    leyera podía devolver basura que AMD dejó guardada de un run
+        #    anterior, y eso apagaba el arranque entero. Además el mock ya
+        #    es determinista, así que la caché no le suma nada.
+        if self.config.use_mock:
+            return self._complete_mock(agent, messages, model)
+
+        # 2) Caché/replay tiene prioridad (reproducibilidad).
         cached = _cache.get(agent, model, messages)
         if cached is not None:
             self._record(agent, model, 0.0, len(cached), len(cached),
-                         ok=True, mock=self.config.use_mock, cached=True)
+                         ok=True, mock=False, cached=True)
             return cached
-
-        if self.config.use_mock:
-            return self._complete_mock(agent, messages, model)
 
         if self.replay:
             raise LLMError("replay=True y no hay respuesta en caché para esta consulta.")
@@ -145,9 +154,11 @@ class LLMClient:
             raise LLMError(f"Agente mock desconocido: {agent!r}")
         dt = (time.perf_counter() - t0) * 1000.0
         out = json.dumps(data, ensure_ascii=False)
-        if not fallback:
-            # No se cachea una respuesta de respaldo con el nombre del modelo
-            # real: eso dejaría disfrazado de "real" a un fallo repetido.
+        if not fallback and not self.config.use_mock:
+            # No se cachea (a) una respuesta de respaldo ni (b) una simulada,
+            # con el nombre del modelo real: las dos dejarían disfrazado de
+            # "real de AMD" a algo que no lo es. La caché sólo guarda
+            # respuestas que de verdad vino del cerebro.
             _cache.put(agent, model, messages, out)
         self._record(agent, model, dt, len(out) // 4, len(out) // 4,
                      ok=True, mock=True, cached=False, fallback=fallback)

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "./api.js";
-import Cabecera from "./components/Cabecera.jsx";
 import Kpis from "./components/Kpis.jsx";
 import Escenario from "./components/Escenario.jsx";
 import Evolucion from "./components/Evolucion.jsx";
@@ -10,6 +9,10 @@ import AgenteVivo from "./components/AgenteVivo.jsx";
 import DetalleDia from "./components/DetalleDia.jsx";
 import MetricasAMD from "./components/MetricasAMD.jsx";
 import MapaCaba from "./components/MapaCaba.jsx";
+import TiraFin from "./components/TiraFin.jsx";
+import MenuLateral from "./components/MenuLateral.jsx";
+import PanelModal from "./components/PanelModal.jsx";
+import Pelicula from "./components/Pelicula.jsx";
 
 const REFRESCO_ESTADO = 4000; // el estado "vivo" cada 4 segundos
 const REFRESCO_PESADO = 12000; // los gráficos y tablas, más tranqui
@@ -30,6 +33,12 @@ export default function App() {
   const [ocupado, setOcupado] = useState(null);
   const [aviso, setAviso] = useState(null);
   const [detalleDia, setDetalleDia] = useState(null); // resumen del último día corrido
+
+  // La nueva pantalla: menú lateral, panel abierto y la película del día.
+  const [menuAbierto, setMenuAbierto] = useState(false);
+  const [panel, setPanel] = useState(null);
+  const [pelicula, setPelicula] = useState(null);
+  const [velocidad, setVelocidad] = useState(3);
 
   const vivo = useRef(true);
   const avisoTimer = useRef(null);
@@ -121,15 +130,24 @@ export default function App() {
   const avanzarMes = () =>
     correr("mes", api.avanzarMes, "Listo: el mes se corrió y el Gerente IA dejó su acta.");
 
-  // Un día entero: el detalle queda a la vista para la demo (lo pidió el autor
-  // para que los jueces vean la simulación al detalle).
-  async function avanzarDia() {
-    const r = await correr(
-      "dia",
-      api.avanzarDia,
-      "Día corrido: mirá el detalle justo abajo.",
-    );
-    if (r && typeof r === "object" && r.leads !== undefined) setDetalleDia(r);
+  // Un día entero: el motor lo resuelve al instante y después lo REPRODUCIMOS
+  // a cámara lenta, para que el dueño vea la operación respirando.
+  async function correrUnDia() {
+    if (ocupado || pelicula) return;
+    setOcupado("dia");
+    setAviso(null);
+    try {
+      const r = await api.avanzarDia();
+      if (r && typeof r === "object" && r.leads !== undefined) {
+        setDetalleDia(r);
+        setPelicula(r); // arranca la película (si no hay guion, se la salta)
+      }
+      await refrescarTodo();
+    } catch (e) {
+      mostrarAviso("error", e.message);
+    } finally {
+      setOcupado(null);
+    }
   }
 
   const correrSeis = () =>
@@ -145,11 +163,58 @@ export default function App() {
     correr("reiniciar", api.reiniciar, "Simulación reiniciada: arrancamos de cero.");
   };
 
+  function abrirPanel(id) {
+    setPanel(id);
+    setMenuAbierto(false);
+  }
+
+  // El contenido de cada panel del menú.
+  function contenidoPanel(id) {
+    switch (id) {
+      case "kpis":
+        return <Kpis estado={estado} />;
+      case "dia":
+        return <DetalleDia detalle={detalleDia} />;
+      case "llamadas":
+        return (
+          <LogLlamadas llamadas={llamadas} cargando={cargandoPesado} error={errPesado.llamadas} />
+        );
+      case "motivos":
+        return <Motivos motivos={estado?.motivos} cargando={cargandoEstado} error={errEstado} />;
+      case "gerente":
+        return (
+          <Acta
+            actas={actas}
+            decisiones={estado?.decisiones ?? []}
+            cargando={cargandoPesado}
+            error={errPesado.actas}
+          />
+        );
+      case "evolucion":
+        return (
+          <Evolucion
+            resumenes={resumenes}
+            cargando={cargandoPesado}
+            error={errPesado.resumenes}
+          />
+        );
+      case "mapa":
+        return <MapaCaba mapa={mapa} cargando={cargandoPesado} error={errPesado.mapa} />;
+      case "escenario":
+        return <Escenario estado={estado} />;
+      case "agente":
+        return <AgenteVivo />;
+      case "amd":
+        return <MetricasAMD metricas={metricas} cargando={cargandoPesado} error={errPesado.metricas} />;
+      default:
+        return null;
+    }
+  }
+
   // --------------------------------------------------------------- pantallas
   if (errEstado && !estado) {
     return (
       <div className="app">
-        <Cabecera estado={null} cargando ocupado={ocupado} />
         <div className="aviso aviso-error" style={{ marginTop: 18 }}>
           <span>🚧</span>
           <span>
@@ -166,95 +231,120 @@ export default function App() {
     );
   }
 
+  const diaParaPelicula = pelicula?.pelicula?.eventos?.length ? pelicula : null;
+
   return (
-    <div className="app">
-      <Cabecera
+    <div className="portada">
+      <TiraFin
         estado={estado}
         cargando={cargandoEstado}
-        ocupado={ocupado}
-        onAvanzar={avanzarMes}
-        onAvanzarDia={avanzarDia}
-        onCorrerSeis={correrSeis}
-        onReiniciar={reiniciar}
+        corriendo={ocupado}
+        menuAbierto={menuAbierto}
+        onMenu={() => setMenuAbierto((a) => !a)}
       />
 
-      {aviso ? (
-        <div className={`aviso aviso-${aviso.tipo}`}>
-          <span>{aviso.tipo === "ok" ? "✅" : "⚠️"}</span>
-          <span>{aviso.texto}</span>
-        </div>
-      ) : null}
+      <main className="escena">
+        {/* El mapa de CABA a pantalla completa: el FONDO de todo. */}
+        <MapaCaba mapa={mapa} cargando={cargandoPesado} error={errPesado.mapa} portada />
 
-      {errEstado && estado ? (
-        <div className="aviso aviso-info">
-          <span>💤</span>
-          <span>El motor dejó de responder por un momento: sigo reintentando solo.</span>
-        </div>
-      ) : null}
-
-      <Kpis estado={estado} />
-
-      <DetalleDia detalle={detalleDia} />
-
-      <section className="paneles">
-        <Escenario estado={estado} />
-
-        <Acta
-          actas={actas}
-          decisiones={estado?.decisiones ?? []}
-          cargando={cargandoPesado}
-          error={errPesado.actas}
-        />
-
-        <div className="panel panel-ancho">
-          <h2 className="panel-titulo">
-            <span className="icono">📈</span> Evolución mes a mes
-          </h2>
-          <p className="panel-sub">
-            Ingresos contra costos, y cuántos técnicos hay en cada mes. Se ve que{" "}
-            <strong>los costos crecen más despacio que las ventas</strong>.
-          </p>
-          <Evolucion
-            resumenes={resumenes}
-            cargando={cargandoPesado}
-            error={errPesado.resumenes}
-          />
+        {/* El logo de Nexus, respirando en el centro del mapa. */}
+        <div className="logo-centro" aria-hidden="true">
+          <div className="logo-caja">
+            <div className="logo-nombre">
+              NEXUS<span>ALARM</span>
+            </div>
+            <div className="logo-bajada">Gemelo digital de la operación</div>
+          </div>
         </div>
 
-        <LogLlamadas
-          llamadas={llamadas}
-          cargando={cargandoPesado}
-          error={errPesado.llamadas}
-        />
+        {/* El menú de simulación: lo único que el dueño toca en la pantalla inicial. */}
+        <div className="menu-simulacion">
+          <button
+            className="boton boton-primario"
+            onClick={correrUnDia}
+            disabled={!!ocupado || !!pelicula}
+          >
+            {ocupado === "dia" ? "Corriendo el día…" : "▶ Correr un día"}
+          </button>
 
-        <Motivos motivos={estado?.motivos} cargando={cargandoEstado} error={errEstado} />
+          <span className="menu-sim-e">Velocidad de la película</span>
+          <div className="menu-sim-vel">
+            {[3, 6, 9].map((v) => (
+              <button
+                key={v}
+                className={`dia-chip ${v === velocidad ? "activo" : ""}`}
+                onClick={() => setVelocidad(v)}
+                disabled={!!pelicula}
+              >
+                {v} min
+              </button>
+            ))}
+          </div>
 
-        <AgenteVivo />
+          <span className="menu-sim-sep" />
 
-        <MetricasAMD
-          metricas={metricas}
-          cargando={cargandoPesado}
-          error={errPesado.metricas}
-        />
+          <button
+            className="boton boton-fantasma boton-chico"
+            onClick={avanzarMes}
+            disabled={!!ocupado || !!pelicula}
+          >
+            Avanzar 1 mes
+          </button>
+          <button
+            className="boton boton-fantasma boton-chico"
+            onClick={correrSeis}
+            disabled={!!ocupado || !!pelicula}
+          >
+            6 meses
+          </button>
+          <button
+            className="boton boton-fantasma boton-chico"
+            onClick={reiniciar}
+            disabled={!!ocupado || !!pelicula}
+          >
+            Reiniciar
+          </button>
+        </div>
 
-        <MapaCaba
-          mapa={mapa}
-          cargando={cargandoPesado}
-          error={errPesado.mapa}
-        />
-      </section>
+        {aviso ? (
+          <div className={`aviso aviso-${aviso.tipo} aviso-flotante`}>
+            <span>{aviso.tipo === "ok" ? "✅" : "⚠️"}</span>
+            <span>{aviso.texto}</span>
+          </div>
+        ) : null}
 
-      <footer
-        style={{
-          marginTop: 26,
-          color: "#6d8199",
-          fontSize: 12.5,
-          textAlign: "center",
-        }}
-      >
-        Nexus Alarm · gemelo digital de una empresa ficticia de alarmas en CABA · demo AMD
-        ACT III / lablab.ai · datos simulados, sin validez fiscal.
-      </footer>
+        {errEstado && estado ? (
+          <div className="aviso aviso-info aviso-flotante">
+            <span>💤</span>
+            <span>El motor dejó de responder por un momento: sigo reintentando solo.</span>
+          </div>
+        ) : null}
+
+        {/* La película del día: tapa el mapa mientras se reproduce. */}
+        {diaParaPelicula ? (
+          <div className="pelicula-envoltorio">
+            <Pelicula
+              dia={diaParaPelicula}
+              velocidadInicial={velocidad}
+              onTerminar={() => {
+                setPelicula(null);
+                setPanel("dia");
+              }}
+            />
+          </div>
+        ) : null}
+      </main>
+
+      <MenuLateral
+        abierto={menuAbierto}
+        panelActivo={panel}
+        onAbrir={abrirPanel}
+        onCerrar={() => setMenuAbierto(false)}
+      />
+
+      <PanelModal panel={panel} onCerrar={() => setPanel(null)}>
+        {contenidoPanel(panel)}
+      </PanelModal>
     </div>
   );
 }

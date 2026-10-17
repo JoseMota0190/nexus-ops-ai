@@ -41,7 +41,15 @@ function proyectador(zonas) {
   });
 }
 
-export default function MapaCaba({ mapa, cargando, error }) {
+/**
+ * Mapa de CABA.
+ *
+ * Dos modos:
+ *  - `portada`  → a pantalla completa, sin caja ni títulos: es el FONDO de la
+ *    pantalla del dueño. Solo el mapa y una barrita chica con los días.
+ *  - normal     → dentro de una caja con explicación (el panel de siempre).
+ */
+export default function MapaCaba({ mapa, cargando, error, portada = false }) {
   const [diaActivo, setDiaActivo] = useState(0);
   const [corriendo, setCorriendo] = useState(true);
 
@@ -89,6 +97,140 @@ export default function MapaCaba({ mapa, cargando, error }) {
   const maxBarrio = Math.max(1, ...Object.values(citasDeHoy));
   const barriosActivos = Object.keys(citasDeHoy).length;
 
+  // El dibujo en sí (lo comparten el modo portada y el panel normal).
+  const dibujo = (
+    <svg
+      className="mapa-svg"
+      viewBox={`0 0 ${W} ${H}`}
+      role="img"
+      aria-label="Mapa de CABA con las instalaciones por barrio"
+    >
+      {punto
+        ? Object.entries(zonas).map(([nombre, z]) => {
+            if (z.lat == null || z.lon == null) return null;
+            const { x, y } = punto(z.lat, z.lon);
+            const n = citasDeHoy[nombre] || 0;
+            const r = n > 0 ? 9 + Math.min(20, (n / maxBarrio) * 20) : 6;
+            const derecha = x < W - 150;
+            return (
+              <g key={nombre}>
+                <circle
+                  className="zona-punto"
+                  cx={x}
+                  cy={y}
+                  r={r}
+                  fill={n > 0 ? "rgba(255,90,54,0.55)" : "rgba(74,168,255,0.25)"}
+                  stroke={n > 0 ? "#ff8a3d" : "#4aa8ff"}
+                  strokeWidth="2"
+                />
+                <text
+                  className="zona-label"
+                  x={derecha ? x + r + 6 : x - r - 6}
+                  y={y + 3.5}
+                  textAnchor={derecha ? "start" : "end"}
+                >
+                  {nombre}
+                </text>
+                {n > 0 ? (
+                  <text className="zona-count" x={x} y={y - r - 6} textAnchor="middle">
+                    {n}
+                  </text>
+                ) : null}
+              </g>
+            );
+          })
+        : null}
+
+      {punto
+        ? tecnicos.map((t, i) => {
+            const z = zonas[t.zona_base];
+            if (!z) return null;
+            const base = punto(z.lat, z.lon);
+            const color = COLORES[i % COLORES.length];
+            const desplazado = i % 2 === 0 ? 1 : -1;
+            const x = base.x + desplazado * 16;
+            const y = base.y + 26 + (i % 3) * 9;
+            return (
+              <g key={`tec${t.id}`}>
+                <rect
+                  x={x - 9}
+                  y={y - 9}
+                  width="18"
+                  height="18"
+                  rx="6"
+                  fill={color}
+                  stroke="#0b1117"
+                  strokeWidth="2"
+                />
+                <text
+                  x={x}
+                  y={y + 4}
+                  textAnchor="middle"
+                  fontSize="11"
+                  fontWeight="800"
+                  fill="#0b1117"
+                >
+                  {String(t.nombre || "?").trim().charAt(0).toUpperCase()}
+                </text>
+              </g>
+            );
+          })
+        : null}
+    </svg>
+  );
+
+  const chipsDias = (
+    <div className="dias">
+      {DIAS.map((nombre, i) => (
+        <button
+          key={nombre}
+          className={`dia-chip ${i === diaActivo ? "activo" : ""}`}
+          onClick={() => {
+            setDiaActivo(i);
+            setCorriendo(false);
+          }}
+        >
+          {nombre} · {totalPorDia[i] || 0}
+        </button>
+      ))}
+      <button
+        className="dia-chip"
+        onClick={() => setCorriendo((c) => !c)}
+        title="Pausar o reanudar la animación"
+      >
+        {corriendo ? "⏸ Pausar" : "▶ Reproducir"}
+      </button>
+    </div>
+  );
+
+  // --------------------------------------------------- modo portada
+  // Pantalla de inicio: el mapa llena todo, sin caja ni títulos.
+  if (portada) {
+    if (error) return <div className="error-caja mapa-portada-aviso">{error}</div>;
+    if (!mapa) {
+      return (
+        <div className="mapa-portada-vacio">
+          {cargando ? "Dibujando el mapa…" : "No pude leer el mapa todavía."}
+        </div>
+      );
+    }
+    return (
+      <div className="mapa-portada">
+        {dibujo}
+        <div className="mapa-portada-barra">
+          <span className="mapa-portada-titulo">Mapa de CABA · semana {mapa.semana ?? "—"}</span>
+          {chipsDias}
+          <span className="mapa-portada-dato">
+            <b>{totalHoy}</b> instalaciones {DIAS[diaActivo]?.toLowerCase()} ·{" "}
+            <b>{barriosActivos}</b> barrios · <b>{tecnicos.length}</b> técnicos ·{" "}
+            <b>{mapa.capacidad_dia ?? 0}</b> cupos/día
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  // ---------------------------------------------------- modo panel normal
   return (
     <div className="panel panel-ancho">
       <h2 className="panel-titulo">
@@ -107,114 +249,10 @@ export default function MapaCaba({ mapa, cargando, error }) {
 
       {mapa ? (
         <>
-          <div className="dias">
-            {DIAS.map((nombre, i) => (
-              <button
-                key={nombre}
-                className={`dia-chip ${i === diaActivo ? "activo" : ""}`}
-                onClick={() => {
-                  setDiaActivo(i);
-                  setCorriendo(false);
-                }}
-              >
-                {nombre} · {totalPorDia[i] || 0}
-              </button>
-            ))}
-            <button
-              className="dia-chip"
-              onClick={() => setCorriendo((c) => !c)}
-              title="Pausar o reanudar la animación"
-            >
-              {corriendo ? "⏸ Pausar" : "▶ Reproducir"}
-            </button>
-          </div>
+          {chipsDias}
 
           <div className="mapa-fila">
-            <div>
-              <svg
-                className="mapa-svg"
-                viewBox={`0 0 ${W} ${H}`}
-                role="img"
-                aria-label="Mapa de CABA con las instalaciones por barrio"
-              >
-                {punto
-                  ? Object.entries(zonas).map(([nombre, z]) => {
-                      if (z.lat == null || z.lon == null) return null;
-                      const { x, y } = punto(z.lat, z.lon);
-                      const n = citasDeHoy[nombre] || 0;
-                      const r = n > 0 ? 9 + Math.min(20, (n / maxBarrio) * 20) : 6;
-                      const derecha = x < W - 150;
-                      return (
-                        <g key={nombre}>
-                          <circle
-                            className="zona-punto"
-                            cx={x}
-                            cy={y}
-                            r={r}
-                            fill={n > 0 ? "rgba(255,90,54,0.55)" : "rgba(74,168,255,0.25)"}
-                            stroke={n > 0 ? "#ff8a3d" : "#4aa8ff"}
-                            strokeWidth="2"
-                          />
-                          <text
-                            className="zona-label"
-                            x={derecha ? x + r + 6 : x - r - 6}
-                            y={y + 3.5}
-                            textAnchor={derecha ? "start" : "end"}
-                          >
-                            {nombre}
-                          </text>
-                          {n > 0 ? (
-                            <text
-                              className="zona-count"
-                              x={x}
-                              y={y - r - 6}
-                              textAnchor="middle"
-                            >
-                              {n}
-                            </text>
-                          ) : null}
-                        </g>
-                      );
-                    })
-                  : null}
-
-                {punto
-                  ? tecnicos.map((t, i) => {
-                      const z = zonas[t.zona_base];
-                      if (!z) return null;
-                      const base = punto(z.lat, z.lon);
-                      const color = COLORES[i % COLORES.length];
-                      const desplazado = i % 2 === 0 ? 1 : -1;
-                      const x = base.x + desplazado * 16;
-                      const y = base.y + 26 + (i % 3) * 9;
-                      return (
-                        <g key={`tec${t.id}`}>
-                          <rect
-                            x={x - 9}
-                            y={y - 9}
-                            width="18"
-                            height="18"
-                            rx="6"
-                            fill={color}
-                            stroke="#0b1117"
-                            strokeWidth="2"
-                          />
-                          <text
-                            x={x}
-                            y={y + 4}
-                            textAnchor="middle"
-                            fontSize="11"
-                            fontWeight="800"
-                            fill="#0b1117"
-                          >
-                            {String(t.nombre || "?").trim().charAt(0).toUpperCase()}
-                          </text>
-                        </g>
-                      );
-                    })
-                  : null}
-              </svg>
-            </div>
+            <div>{dibujo}</div>
 
             <div>
               <div className="sub-motivo">Técnicos y su zona base</div>

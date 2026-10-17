@@ -39,6 +39,11 @@ from .leads import generar_leads
 NOMBRES_OPERADORES = ["Mariana Ríos", "Pablo Cabrera", "Sofía Duarte",
                       "Esteban Vega", "Carla Sosa", "Iván Ayala", "Nadia Ledesma"]
 
+# Cuántos eventos entran en la "película" del día que reproduce la pantalla.
+# Con 3 operadores hay ~150 llamadas/día; con este tope la lista queda liviana
+# (máx. ~200 eventos ≈ 40 KB) y la película dura lo mismo siempre.
+_TOPE_PELICULA = 120
+
 
 def mes_de_semana(semana: int) -> int:
     return (semana - 1) // SEMANAS_POR_MES + 1
@@ -167,6 +172,9 @@ class Simulacion:
             "turnos_negociados": negociados,
             "motivos_no_compra": res.motivos_no_compra,
             "motivos_no_respuesta": res.motivos_no_respuesta,
+            # El "guion" del día: lo que la pantalla reproduce a cámara lenta
+            # para que el juez vea la operación pasando llamada por llamada.
+            "pelicula": self._pelicula_del_dia(leads, res, citas),
         }
         self.store.guardar_resumen_dia(
             mes=e.mes, semana=semana, dia=dia, leads=len(leads),
@@ -205,6 +213,47 @@ class Simulacion:
                                f"cliente {c.cliente_id}", c.mensaje,
                                e.mes, c.semana, c.dia)
         return len(res.agendadas), res.sin_capacidad, res.turnos_negociados
+
+    def _pelicula_del_dia(self, leads, res, citas) -> dict:
+        """Guion del día para que la pantalla lo reproduzca a cámara lenta.
+
+        No cambia la simulación: es solo el RELATO de lo que ya pasó, ordenado
+        por minuto (jornada de 8:00 a 18:00). La instalación va en su turno real
+        (9am / 12pm / 4pm) y las llamadas se reparten entre esas horas, para que
+        el dueño vea la operación respirando en vez de un número que salta.
+        """
+        inicio, fin = 30, 570           # 8:30 → 17:30, en minutos desde las 8:00
+        minuto_turno = {"9am": 60, "12pm": 240, "4pm": 480}
+        eventos: list[dict] = []
+
+        # Las instalaciones de hoy, en su hora.
+        for c in citas:
+            fila = self.store.conn.execute(
+                "SELECT nombre FROM clientes WHERE id = ?", (c["cliente_id"],)).fetchone()
+            eventos.append({
+                "tipo": "instalacion", "minuto": minuto_turno.get(str(c["turno"]), 300),
+                "cliente": fila["nombre"] if fila else "Cliente",
+                "barrio": c["barrio"], "turno": c["turno"],
+            })
+
+        # Las llamadas, en el orden en que se hicieron a lo largo del día.
+        n = min(len(res.estados), _TOPE_PELICULA)
+        for i in range(n):
+            lead = leads[i]
+            op = res.operador_de(i)
+            eventos.append({
+                "tipo": "llamada",
+                "minuto": inicio + (fin - inicio) * i // max(1, n - 1),
+                "cliente": lead.nombre, "barrio": lead.barrio,
+                "telefono": lead.telefono,
+                "operador": NOMBRES_OPERADORES[(op - 1) % len(NOMBRES_OPERADORES)],
+                "atendio": res.estados[i] != "perdido",
+                "motivo": res.motivo_de(i),
+                "venta": res.estados[i] == "vendido",
+            })
+
+        eventos.sort(key=lambda ev: (ev["minuto"], 0 if ev["tipo"] == "instalacion" else 1))
+        return {"hora_inicio": 8 * 60, "hora_fin": 18 * 60, "eventos": eventos}
 
     # ---------------------------------------------------------------- semana
     def correr_semana(self) -> list[dict]:

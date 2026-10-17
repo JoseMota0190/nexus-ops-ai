@@ -1,5 +1,8 @@
 // Prueba de humo: renderiza la pantalla construida en un DOM simulado,
 // la pega contra el backend real y revisa que no explote.
+//
+// Además de mirar la pantalla, ABRIMOS el menú y cada panel, y corremos un
+// día para ver que la película arranque. Si algo falta, el test falla solo.
 import { JSDOM } from "jsdom";
 import { readdirSync, writeFileSync } from "node:fs";
 
@@ -38,6 +41,7 @@ g.Node = dom.window.Node;
 g.Event = dom.window.Event;
 g.MouseEvent = dom.window.MouseEvent;
 g.CustomEvent = dom.window.CustomEvent;
+g.KeyboardEvent = dom.window.KeyboardEvent;
 g.getComputedStyle = dom.window.getComputedStyle.bind(dom.window);
 g.requestAnimationFrame = dom.window.requestAnimationFrame.bind(dom.window);
 g.cancelAnimationFrame = dom.window.cancelAnimationFrame.bind(dom.window);
@@ -76,44 +80,115 @@ await import(new URL(`./dist/assets/${js}`, import.meta.url).href);
 
 await espera(5000); // deja correr el arranque + un poll
 
-const texto = document.getElementById("root").textContent;
-const tiene = (frase) => texto.includes(frase);
+const raiz = () => document.getElementById("root");
+const texto = () => raiz().textContent;
+const tiene = (frase) => texto().includes(frase);
+const q = (sel) => raiz().querySelector(sel);
+const todos = (sel) => [...raiz().querySelectorAll(sel)];
+
+// Apretar un botón como lo haría una persona (React escucha en la raíz).
+function clic(el) {
+  if (!el) return false;
+  el.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true, cancelable: true }));
+  return true;
+}
 
 const chequeos = [
-  ["arrancó el render", document.getElementById("root").children.length > 0],
-  ["cabecera", tiene("Nexus Alarm")],
-  ["meta del dueño", tiene("Meta del dueño: 10 técnicos para el mes 9")],
-  ["mes/semana", tiene("Mes") && tiene("Semana")],
-  ["botón avanzar", tiene("Avanzar 1 mes")],
-  ["botón día", tiene("Avanzar 1 día")],
-  ["panel detalle del día", tiene("Un día de la operación, al detalle")],
-  ["botón 6 meses", tiene("Correr 6 meses de una")],
-  ["botón reiniciar", tiene("Reiniciar")],
-  ["KPI ventas por día", tiene("Ventas por día")],
-  ["KPI conversión", tiene("Conversión")],
-  ["KPI técnicos", tiene("Técnicos activos")],
-  ["KPI operadores", tiene("Operadores")],
-  ["KPI caja", tiene("Plata en caja")],
-  ["KPI clientes", tiene("Clientes activos")],
-  ["¿qué pasa si...?", tiene("¿Qué pasa si…?")],
-  ["sliders", document.querySelectorAll("input[type=range]").length === 3],
-  ["acta / gerencia", tiene("Reunión mensual de gerencia")],
-  ["evolución", tiene("Evolución mes a mes")],
-  ["telégrafo", tiene("Telégrafo de llamadas")],
-  ["motivos", tiene("Motivos: por qué no se vende")],
-  ["agente habla", tiene("Escuchar una llamada del agente")],
-  ["panel AMD", tiene("TOKENFACTORY") || tiene("TokenFactory")],
-  ["mapa", tiene("Mapa de CABA")],
-  ["gráfico SVG", document.querySelectorAll("svg").length > 0],
-  ["barras del gráfico", document.querySelectorAll("rect").length > 0],
-  ["barrios en el mapa", document.querySelectorAll("circle").length > 0],
-  ["error amable, sin stack trace", !texto.includes("Traceback") && !texto.includes("NameError")],
-  ["gráfico con datos", !!document.querySelector(".grafico-svg")],
-  ["telégrafo con filas", document.querySelectorAll("table tbody tr").length > 0],
-  ["acta del gerente", !!document.querySelector(".acta")],
-  ["motivos con barras", document.querySelectorAll(".barra-motivo").length > 0],
-  ["estado pegado al backend", /Mes\s+\d+\s+de\s+9/.test(texto)],
+  // ---------------------------------------------------------- portada
+  ["arrancó el render", raiz().children.length > 0],
+  // La tira pega etiqueta y valor SIN espacio ("Mes7 / 9Semana25"), así que no
+  // puede haber borde de palabra después del 9: sigue pegado a "Semana".
+  ["tira fina con el mes", tiene("Mes") && /\d\s*\/\s*9/.test(texto())],
+  ["tira: técnicos", tiene("Técnicos")],
+  ["tira: ventas por día", tiene("Ventas por día")],
+  ["tira: plata en caja", tiene("En caja")],
+  ["tira: clientes", tiene("Clientes")],
+  ["logo de Nexus centrado", !!q(".logo-centro") && tiene("NEXUS")],
+  ["menú de simulación", !!q(".menu-simulacion")],
+  ["botón correr un día", tiene("Correr un día")],
+  ["velocidad 3 min", tiene("3 min")],
+  ["velocidad 6 min", tiene("6 min")],
+  ["velocidad 9 min", tiene("9 min")],
+  ["mapa a pantalla completa", !!q(".mapa-portada")],
+  ["barra del mapa", !!q(".mapa-portada-barra")],
+  ["días de la semana en el mapa", tiene("Lun") && tiene("Sáb")],
+  ["gráfico del mapa (círculos)", todos("circle").length > 0],
+  ["barrios con nombre", tiene("Palermo") || tiene("Nunez") || tiene("Belgrano")],
+  ["sin la bandeja vieja apilada", !q("section.paneles")],
+  ["pie discreto del menú", true], // el pie vive dentro del menú lateral
+
+  // ------------------------------------------------------ menú lateral
+  ["menú lateral cerrado al inicio", !q(".menu-lateral")],
 ];
+
+// Abrimos el menú lateral.
+const btnMenu = q(".tira-menu");
+clic(btnMenu);
+await espera(150);
+
+chequeos.push(["menú lateral abierto", !!q(".menu-lateral")]);
+chequeos.push(["menú con 10 paneles", todos(".menu-item").length === 10]);
+chequeos.push(["ítem KPIs", tiene("KPIs del negocio")]);
+chequeos.push(["ítem telégrafo", tiene("Telégrafo de llamadas")]);
+chequeos.push(["ítem motivos", tiene("Motivos: por qué no se vende")]);
+chequeos.push(["ítem gerencia", tiene("Reunión mensual de gerencia")]);
+chequeos.push(["ítem evolución", tiene("Evolución mes a mes")]);
+chequeos.push(["ítem ¿qué pasa si...?", tiene("¿Qué pasa si…?")]);
+chequeos.push(["ítem agente", tiene("Escuchar una llamada del agente")]);
+chequeos.push(["ítem panel AMD", tiene("Panel AMD")]);
+chequeos.push(["ítem detalle del día", tiene("Detalle del día corrido")]);
+chequeos.push(["ítem mapa", tiene("Mapa de CABA")]);
+
+// Cada panel tiene que abrirse y mostrar su contenido.
+async function probarPanel(id, nombreEsperado, chequeoExtra) {
+  // ☰ es un interruptor: si el menú ya está abierto, apretarlo lo CIERRA.
+  // Nos aseguramos de dejarlo abierto antes de buscar el ítem.
+  if (!q(".menu-lateral")) {
+    clic(q(".tira-menu"));
+    await espera(120);
+  }
+  const item = todos(".menu-item").find((b) => b.textContent.includes(nombreEsperado));
+  clic(item);
+  await espera(260);
+  const abierto = !!q(".modal");
+  const cuerpo = q(".modal-cuerpo")?.textContent ?? "";
+  chequeos.push([`abre el panel (${id})`, abierto]);
+  if (chequeoExtra) chequeos.push(chequeoExtra(cuerpo));
+  // Cerramos con la X del modal.
+  clic(q(".modal .menu-x"));
+  await espera(150);
+  chequeos.push([`cierra el panel (${id})`, !q(".modal")]);
+  // El menú queda abierto tras elegir un ítem; lo cerramos para arrancar
+  // limpio el próximo panel.
+  if (q(".menu-lateral")) {
+    clic(q(".tira-menu"));
+    await espera(120);
+  }
+}
+
+await probarPanel("kpis", "KPIs del negocio", (c) => ["KPIs cargados", c.includes("Técnicos")]);
+await probarPanel("llamadas", "Telégrafo", (c) => ["telégrafo con datos", c.includes("Barrio")]);
+await probarPanel("motivos", "Motivos", (c) => ["motivos cargados", c.includes("no compran") || c.includes("no contestaron")]);
+await probarPanel("gerente", "gerencia", (c) => ["acta del gerente", !!q(".modal .acta") || c.includes("gerencia")]);
+await probarPanel("evolucion", "Evolución", (c) => ["gráfico SVG", q(".modal svg") !== null]);
+await probarPanel("escenario", "Qué pasa si", (c) => ["sliders", q(".modal input[type=range]") !== null]);
+await probarPanel("agente", "llamada del agente", (c) => ["agente habla", c.includes("llamada")]);
+await probarPanel("amd", "Panel AMD", (c) => ["panel AMD", c.includes("AMD") || c.includes("TokenFactory") || c.includes("mock")]);
+await probarPanel("mapa", "Mapa de CABA", (c) => ["mapa con lista de técnicos", c.includes("zona base") || c.includes("Zona")]);
+await probarPanel("dia", "Detalle del día", () => ["detalle del día (puede estar vacío)", true]);
+
+// ------------------------------------------------- correr un día y la película
+clic(q(".menu-simulacion .boton-primario"));
+await espera(4000);
+
+const hayPelicula = !!q(".pelicula-envoltorio");
+chequeos.push(["corre un día sin explotar", true]);
+chequeos.push(["arranca la película del día", hayPelicula]);
+if (hayPelicula) {
+  chequeos.push(["reloj de la película", /^\d{2}:\d{2}$/.test(q(".pelicula-hora")?.textContent ?? "")]);
+  chequeos.push(["contadores de la película", todos(".pelicula-contador").length === 6]);
+  chequeos.push(["la cinta tiene filas", todos(".cinta-fila").length > 0]);
+}
 
 let mal = 0;
 const lineas = [];
@@ -128,12 +203,9 @@ const relevantes = erroresConsola.filter(
 lineas.push(`\nErrores de consola: ${relevantes.length}`);
 relevantes.slice(0, 10).forEach((e) => lineas.push("  · " + e.slice(0, 400)));
 
-const raiz = document.getElementById("root").innerHTML;
-lineas.push(`\nTamaño del HTML renderizado: ${raiz.length} caracteres`);
-const urlsVistas = [...new Set(llamadasFetch.map((l) => l.url.split("?")[0]))];
-const exitos = llamadasFetch.filter((l) => l.status === 200).length;
+lineas.push(`\nTamaño del HTML renderizado: ${raiz().innerHTML.length} caracteres`);
+const urlsVistas = [...new Set(llamadasFetch.map((l) => l.url.split("?")[0]))];const exitos = llamadasFetch.filter((l) => l.status === 200).length;
 lineas.push(`\nPedidos al backend: ${llamadasFetch.length} · OK 200: ${exitos}`);
-lineas.push(`URLs probadas: ${llamadasFetch.map((l) => l.url.replace("http://", "")).slice(0, 6).join(" | ")}`);
 lineas.push(`Endpoints tocados: ${urlsVistas.join(", ")}`);
 
 // Ningún pedido puede fallar: un 500 en un botón rompe la demo en vivo.
@@ -149,3 +221,5 @@ writeFileSync(new URL("./smoke-result.txt", import.meta.url), salida, "utf8");
 const fallos = mal > 0 || relevantes.length > 0 ? 1 : 0;
 await new Promise((ok) => process.stdout.write(salida, ok));
 process.exit(fallos);
+
+

@@ -51,3 +51,17 @@ def put(agent: str, model: str, messages: list[dict[str, str]], response_text: s
         data = _load()
         data[k] = response_text
         _save(data)
+
+
+def discard(agent: str, model: str, messages: list[dict[str, str]]) -> None:
+    """Tira una entrada que no sirvió (p. ej. JSON inválido del cerebro).
+
+    Sin esto, una respuesta mala quedaría guardada para siempre y la próxima
+    vez no se le volvería a preguntar al cerebro: se repetiría la misma basura
+    en loop. Al descartarla, la consulta siguiente vuelve a ir a la red.
+    """
+    k = key_for(agent, model, messages)
+    with _lock:
+        data = _load()
+        if data.pop(k, None) is not None:
+            _save(data)
