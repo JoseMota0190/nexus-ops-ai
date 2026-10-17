@@ -1,8 +1,9 @@
 """Cliente LLM único para todo el proyecto.
 
 Un solo punto de entrada compatible con OpenAI (`base_url` configurable) que apunta
-al TokenFactory de AMD. De acá salen TODAS las llamadas a modelos, para que las
-métricas se capturen en un solo lugar.
+a un modelo abierto servido sobre AMD (Radeon Cloud / instancia GPU con Gemma+vLLM).
+De acá salen TODAS las llamadas a modelos, para que las métricas se capturen en un
+solo lugar.
 
 Modos:
 - USE_MOCK=true  -> respuestas locales realistas, sin red ni créditos.

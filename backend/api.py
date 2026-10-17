@@ -369,7 +369,7 @@ def facturacion(mes: int | None = None) -> dict:
 # ------------------------------------------------------------ métricas AMD
 @app.get("/api/metricas")
 def metricas() -> dict:
-    """Panel AMD: latencia, tokens y tokens/segundo del cerebro servido por TokenFactory."""
+    """Panel AMD: latencia, tokens y tokens/segundo del cerebro servido sobre AMD."""
     m = get_metrics()
     cfg = get_config()
     resumen = m.summary() if hasattr(m, "summary") else {}

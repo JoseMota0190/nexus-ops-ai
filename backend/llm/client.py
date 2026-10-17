@@ -76,7 +76,7 @@ class LLMClient:
             # para que la próxima consulta vuelva a ir al cerebro en vez de
             # repetir el mismo error en loop.
             _cache.discard(agent, self.config.model or "mock", messages)
-            _log.warning("AMD/TokenFactory no respondió (%s) -> respaldo local", e)
+            _log.warning("AMD no respondió (%s) -> respaldo local", e)
             return self._validate(agent, self._complete_fallback(agent, messages), schema)
 
     def complete_json(self, agent: str, messages: list[dict[str, str]],
@@ -88,7 +88,7 @@ class LLMClient:
         except LLMError as e:
             if self.config.use_mock or self.replay:
                 raise
-            _log.warning("AMD/TokenFactory no respondió (%s) -> respaldo local", e)
+            _log.warning("AMD no respondió (%s) -> respaldo local", e)
             return self._complete_fallback(agent, messages)
 
     def _preparar_prompt(self, messages: list[dict[str, str]],

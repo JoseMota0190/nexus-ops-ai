@@ -79,7 +79,7 @@ export default function MetricasAMD({ metricas, cargando, error }) {
               </span>
             ) : (
               <span className="etiqueta etiqueta-verde">
-                Requisito del jurado: el LLM corre en AMD TokenFactory
+                Requisito del jurado: el LLM corre sobre AMD (Radeon Cloud / GPU)
               </span>
             )}
             {metricas.total_calls > 0 ? (
