@@ -16,7 +16,7 @@ import random
 from dataclasses import dataclass, field
 
 from .business import DIAS_POR_SEMANA, DIAS_SEMANA, MAX_INTENTOS_TURNO, PROB_NO_PUEDE, \
-    TURNO_HORA, TURNOS_DIA
+    TURNO_HORA, TURNOS_DIA, capacidad_tecnico_dia, turnos_de_capacidad
 from .zones import ZONAS, distancia_aprox, zona_por_nombre
 
 _TECNICOS_NOMBRES = [
@@ -107,7 +107,9 @@ def agendar_ventas(ventas: list[dict], ocupados: set[tuple[int, int, str]],
             # Preferir el técnico más cercano que tenga un hueco libre.
             for t in candidatos:
                 for dia in range(DIAS_POR_SEMANA):
-                    for turno in TURNOS_DIA:
+                    dia_global = (semana_objetivo - 1) * DIAS_POR_SEMANA + dia
+                    cap = capacidad_tecnico_dia(t["id"], dia_global)
+                    for turno in turnos_de_capacidad(cap):
                         clave = (t["id"], dia, turno)
                         if clave in ocupados or clave in rechazados:
                             continue

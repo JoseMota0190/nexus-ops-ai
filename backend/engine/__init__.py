@@ -8,6 +8,7 @@ from .clock import SimClock, velocidad
 from .business import (
     Empresa, PRODUCTOS, META_TECNICOS, META_MES, DIAS_POR_SEMANA, SEMANAS_POR_MES,
     MESES_TOTALES, ventas_por_dia, tecnicos_necesarios, elegir_kit, Producto,
+    capacidad_tecnico_dia, turnos_de_capacidad, TURNOS_TODOS,
 )
 from .leads import Lead, generar_leads
 from .technicians import Tecnico, asignar_visita, Visita, nuevos_tecnicos
@@ -32,6 +33,7 @@ __all__ = [
     "Empresa", "PRODUCTOS", "META_TECNICOS", "META_MES",
     "DIAS_POR_SEMANA", "SEMANAS_POR_MES", "MESES_TOTALES",
     "ventas_por_dia", "tecnicos_necesarios", "elegir_kit", "Producto",
+    "capacidad_tecnico_dia", "turnos_de_capacidad", "TURNOS_TODOS",
     "DiaLlamadas", "simular_dia_de_llamadas", "MOTIVOS_NO_COMPRA",
     "Cita", "ResultadoAgenda", "agendar_ventas", "nombres_para_alta",
     "Charla", "agendar_semana_enjambre", "agendar_venta_en_sala",

@@ -26,7 +26,8 @@ from llm import LLMClient
 from schemas import CoordinacionResponse, TurnoOperador, TurnoTecnicos
 
 from .agenda import Cita, ResultadoAgenda, tecnicos_de, turnos_ocupados
-from .business import DIAS_POR_SEMANA, TURNO_HORA, TURNOS_DIA
+from .business import (DIAS_POR_SEMANA, TURNO_HORA, TURNOS_DIA, TURNOS_TODOS,
+                       capacidad_tecnico_dia, turnos_de_capacidad)
 from .zones import distancia_aprox, zona_por_nombre
 
 # Cuántas opciones de turno se le muestran al coordinador de agenda (pizarra chica).
@@ -49,23 +50,32 @@ class Charla:
 
 # ------------------------------------------------------------------ opciones
 def turnos_libres(tecnicos: list[dict], ocupados: set[tuple[int, int, str]],
-                  barrio: str, tope: int = _OPCIONES_MAX) -> list[dict]:
+                  barrio: str, semana: int,
+                  tope: int = _OPCIONES_MAX) -> list[dict]:
     """Turnos (día, hora) que al menos un técnico puede cubrir, con sus candidatos.
 
     Ordenados por día y hora. Cada opción trae los técnicos libres en ese hueco,
     ya ordenados por cercanía al barrio del cliente (el reparto por zona lo
-    calcula el PROGRAMA; la IA sólo elige de esa lista).
+    calcula el PROGRAMA; la IA sólo elige de esa lista). Respeta la capacidad
+    diaria de cada técnico (2, 3 o 4 instalaciones según cómo venga el día).
     """
     zona = zona_por_nombre(barrio)
     opciones: list[dict] = []
     for dia in range(DIAS_POR_SEMANA):
-        for turno in TURNOS_DIA:
-            candidatos = [
-                {"id": int(t["id"]), "zona": str(t.get("zona", "")),
-                 "nombre": str(t.get("nombre") or f"TEC-{t['id']}")}
-                for t in tecnicos
-                if t["id"] is not None and (t["id"], dia, turno) not in ocupados
-            ]
+        dia_global = (semana - 1) * DIAS_POR_SEMANA + dia
+        for turno in TURNOS_TODOS:
+            candidatos: list[dict] = []
+            for t in tecnicos:
+                if t["id"] is None:
+                    continue
+                if turno not in turnos_de_capacidad(capacidad_tecnico_dia(int(t["id"]), dia_global)):
+                    continue
+                if (t["id"], dia, turno) in ocupados:
+                    continue
+                candidatos.append({
+                    "id": int(t["id"]), "zona": str(t.get("zona", "")),
+                    "nombre": str(t.get("nombre") or f"TEC-{t['id']}"),
+                })
             if not candidatos:
                 continue
             candidatos.sort(key=lambda c: (
@@ -77,9 +87,12 @@ def turnos_libres(tecnicos: list[dict], ocupados: set[tuple[int, int, str]],
 
 def _mejor_turno(opciones: list[dict], pref: dict) -> dict:
     """La opción válida más parecida a lo que pidió el cliente (día, después turno)."""
+    def idx(turno: str) -> int:
+        return TURNOS_TODOS.index(turno) if turno in TURNOS_TODOS else 0
+
     def clave(o: dict) -> tuple[int, int]:
         d = abs(int(o["dia"]) - int(pref.get("dia", 0)))
-        t = abs(TURNOS_DIA.index(o["turno"]) - TURNOS_DIA.index(pref.get("turno", TURNOS_DIA[0])))
+        t = abs(idx(o["turno"]) - idx(pref.get("turno", TURNOS_DIA[0])))
         return (d, t)
     return min(opciones, key=clave)
 
@@ -183,7 +196,7 @@ def agendar_venta_en_sala(llm: LLMClient, store, venta: dict,
     if not tecnicos:
         return None, None
     opciones = turnos_libres(tecnicos, turnos_ocupados(store, semana_objetivo),
-                             venta["barrio"])
+                             venta["barrio"], semana_objetivo)
     if not opciones:
         return None, None
     return negociar_venta(llm, store, venta, opciones, rng, semana_objetivo)
@@ -211,7 +224,7 @@ def agendar_semana_enjambre(llm: LLMClient, store, semana: int,
     for v in pendientes:
         venta = {"id": int(v["id"]), "cliente_id": int(v["cliente_id"]),
                  "barrio": v["barrio"]}
-        opciones = turnos_libres(tecnicos, ocupados, venta["barrio"])
+        opciones = turnos_libres(tecnicos, ocupados, venta["barrio"], objetivo)
         if not opciones:
             res.sin_capacidad += 1
             continue

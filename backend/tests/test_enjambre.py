@@ -17,6 +17,8 @@ from llm.config import LLMConfig
 from schemas import (TurnoOperador, TurnoTecnicos, CoordinacionResponse,
                      DespachoResponse)
 from engine import Simulacion
+from engine.agenda import tecnicos_de
+from engine.business import DIAS_POR_SEMANA, capacidad_tecnico_dia
 from engine.enjambre import (agendar_semana_enjambre, turnos_libres,
                              _turno_valido, _tecnico_valido)
 from store import Store
@@ -137,7 +139,7 @@ def _nueva_venta(store, nombre: str, barrio: str, semana: int = 1) -> int:
 
 def test_turnos_libres_excluye_los_ocupados():
     tecnicos = [{"id": 1, "zona": "Palermo"}]
-    opciones = turnos_libres(tecnicos, {(1, 0, "9am")}, "Palermo")
+    opciones = turnos_libres(tecnicos, {(1, 0, "9am")}, "Palermo", 2)
     assert opciones, "tiene que quedar lugar"
     assert (0, "9am") not in [(o["dia"], o["turno"]) for o in opciones]
 
@@ -183,16 +185,19 @@ def test_la_sala_agenda_todas_las_ventas_sin_pisar_turnos():
 
 
 def test_el_enjambre_nunca_supera_la_capacidad():
-    """Con 2 técnicos hay 36 turnos por semana: 40 ventas dejan 4 sin capacidad."""
+    """Con 2 técnicos la semana tiene ~36 turnos (varía día a día según la
+    capacidad): las ventas que no entran quedan 'sin capacidad'."""
     with tempfile.TemporaryDirectory() as tmp:
         sim = Simulacion(Store(Path(tmp) / "t.db"), _client(), semilla=3)
         sim.inicializar(reiniciar=True)
-        for i in range(40):
+        for i in range(60):
             _nueva_venta(sim.store, f"Cliente {i}", "Belgrano")
 
         res, _ = agendar_semana_enjambre(sim.llm, sim.store, 1, sim.rng)
-        assert len(res.agendadas) == 36
-        assert res.sin_capacidad == 4
+        cap = sum(capacidad_tecnico_dia(t["id"], (2 - 1) * DIAS_POR_SEMANA + d)
+                  for t in tecnicos_de(sim.store) for d in range(DIAS_POR_SEMANA))
+        assert len(res.agendadas) == min(60, cap)
+        assert res.sin_capacidad == 60 - len(res.agendadas)
         sim.store.close()
 
 

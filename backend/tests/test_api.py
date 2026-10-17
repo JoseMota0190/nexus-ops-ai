@@ -10,6 +10,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 _TD = tempfile.mkdtemp()
 os.environ["NEXUS_DB"] = str(Path(_TD) / "api.db")
 
+# Los tests SIEMPRE corren sin red, aunque el `.env` de la máquina tenga AMD
+# prendido. Se fija ANTES de importar api (load_dotenv no pisa lo ya seteado).
+os.environ["USE_MOCK"] = "true"
+
 from fastapi.testclient import TestClient  # noqa: E402
 from api import app  # noqa: E402
 

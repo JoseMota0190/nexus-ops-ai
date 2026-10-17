@@ -21,11 +21,13 @@ services:
     autoDeploy: true
     plan: free
     envVars:
-      # Mock por defecto para que la demo corra sin gastar créditos AMD.
-      # Para prender el cerebro AMD de verdad: cambiar a "false" y completar
-      # LLM_API_KEY y LLM_MODEL (se setean desde el panel de Render, sin commitear).
+      # El CEREBRO corre en AMD (Gemma en Radeon Cloud). La semilla de los 6 meses
+      # precargados usa el motor local igual (ver api.py), así el arranque es en
+      # segundos; AMD se usa en todo lo EN VIVO: la Sala de Agentes, las reuniones
+      # del gerente y la llamada en vivo. LLM_API_KEY y LLM_MODEL se cargan a mano
+      # desde el panel de Render (nunca se commitean).
       - key: USE_MOCK
-        value: "true"
+        value: "false"
       # AMD Radeon Cloud: endpoints compatibles con OpenAI, gratis y sin aprobación.
       - key: LLM_BASE_URL
         value: "https://developer.amd.com.cn/radeon/api/v1"
@@ -34,6 +36,6 @@ services:
       - key: LLM_MAX_RETRIES
         value: "2"
       - key: LLM_TIMEOUT_S
-        value: "30"
+        value: "90"
       # NEXUS_DB queda sin definir a propósito: la base se crea en backend/data/
       # dentro del repo, que sí es escribible en el plan gratis de Render.

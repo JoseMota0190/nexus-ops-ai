@@ -17,7 +17,7 @@ from engine import (
     ventas_objetivo_del_mes, ventas_potenciales, agendar_ventas,
     reunion_mensual, mes_de_semana,
 )
-from engine.business import DIAS_POR_SEMANA, META_TECNICOS, SEMANAS_POR_MES
+from engine.business import DIAS_POR_SEMANA, META_TECNICOS, SEMANAS_POR_MES, capacidad_tecnico_dia
 from engine.agenda import turnos_ocupados, tecnicos_de
 from engine.zones import zona_por_nombre
 from store import Store
@@ -133,19 +133,30 @@ def test_asignacion_respeta_capacidad():
 # -------------------------------------------------------------------- agenda
 def test_agenda_llena_capacidad_sin_excederla():
     ventas = [{"id": i, "cliente_id": i, "barrio": ZONAS[i % len(ZONAS)].nombre}
-              for i in range(36)]
+              for i in range(40)]
     tecnicos = [{"id": 1, "zona": "Palermo"}, {"id": 2, "zona": "Flores"}]
     ocupados = set()
     res = agendar_ventas(ventas, ocupados, tecnicos, semana_objetivo=2,
                          rng=random.Random(3))
-    # 2 técnicos x 3 turnos x 6 días = 36 cupos exactos.
-    assert len(res.agendadas) <= 36
+    # La capacidad del día fluctúa (2, 3 o 4 por técnico): se agenda hasta llenarla.
+    cap_total = sum(capacidad_tecnico_dia(t["id"], (2 - 1) * DIAS_POR_SEMANA + d)
+                    for t in tecnicos for d in range(DIAS_POR_SEMANA))
+    assert len(res.agendadas) <= cap_total
     assert len(ocupados) == len(res.agendadas)
-    # Nunca más de 3 por técnico-día.
+    # Nunca más instalaciones que la capacidad de ese técnico en ese día.
     por_tecnico_dia: dict[tuple, int] = {}
     for (t, d, _turno) in ocupados:
         por_tecnico_dia[(t, d)] = por_tecnico_dia.get((t, d), 0) + 1
-    assert max(por_tecnico_dia.values()) <= 3
+    for (t, d), n in por_tecnico_dia.items():
+        assert n <= capacidad_tecnico_dia(t, (2 - 1) * DIAS_POR_SEMANA + d)
+
+
+def test_la_capacidad_diaria_del_tecnico_fluctua_2_3_4_promedio_3():
+    valores = [capacidad_tecnico_dia(t, d) for t in range(1, 9) for d in range(120)]
+    assert set(valores) <= {2, 3, 4}
+    assert 2.7 <= sum(valores) / len(valores) <= 3.3
+    # Estable: mismo técnico + mismo día => mismo número (reparto y ejecución coinciden).
+    assert capacidad_tecnico_dia(3, 40) == capacidad_tecnico_dia(3, 40)
 
 
 def test_agenda_sin_tecnicos_marca_sin_capacidad():
@@ -249,6 +260,7 @@ if __name__ == "__main__":
     test_leads_tienen_telefono_y_origen_web()
     test_asignacion_respeta_capacidad()
     test_agenda_llena_capacidad_sin_excederla()
+    test_la_capacidad_diaria_del_tecnico_fluctua_2_3_4_promedio_3()
     test_agenda_sin_tecnicos_marca_sin_capacidad()
     test_gerente_valida_decision_imposible()
     test_un_dia_guarda_todo_en_sqlite()

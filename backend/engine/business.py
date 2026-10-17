@@ -17,6 +17,7 @@ Reglas del modelo (cerradas):
 """
 from __future__ import annotations
 
+import zlib
 from dataclasses import dataclass, field, replace
 
 # ---------------------------------------------------------------- productos
@@ -56,9 +57,41 @@ INSTALACIONES_POR_TECNICO_DIA = 3    # 9am / 12pm / 4pm
 TURNO_MANANA = "9am"
 TURNO_MEDIO = "12pm"
 TURNO_TARDE = "4pm"
+TURNO_EXTRA = "6pm"                  # el 4º turno: sólo en un día productivo
 TURNOS_DIA = (TURNO_MANANA, TURNO_MEDIO, TURNO_TARDE)
-TURNO_HORA = {"9am": "09:00", "12pm": "12:00", "4pm": "16:00"}
+TURNOS_TODOS = TURNOS_DIA + (TURNO_EXTRA,)
+TURNO_HORA = {"9am": "09:00", "12pm": "12:00", "4pm": "16:00", "6pm": "18:00"}
 DIAS_SEMANA = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado")
+
+# La capacidad de un técnico NO es fija (decidido con el autor): en promedio 3
+# instalaciones por día, pero un día con contratiempo hace 2 y un día productivo
+# llega a 4. El promedio queda clavado en 3 (25% hace 2, 50% hace 3, 25% hace 4).
+PROB_DIA_PRODUCTIVO = 0.25
+PROB_DIA_JUSTO = 0.25
+
+
+def turnos_de_capacidad(capacidad: int) -> tuple[str, ...]:
+    """Qué turnos ofrece un técnico según cómo viene su día (2, 3 o 4 instalaciones)."""
+    if capacidad >= 4:
+        return TURNOS_TODOS
+    if capacidad <= 2:
+        return TURNOS_DIA[:2]
+    return TURNOS_DIA
+
+
+def capacidad_tecnico_dia(tecnico_id: int, dia_global: int, semilla: int = 1337) -> int:
+    """Capacidad diaria de un técnico: 2, 3 o 4 (promedio 3), ESTABLE.
+
+    Es determinista a propósito (mismo técnico + mismo día => mismo número): así
+    el reparto y la ejecución nunca se contradicen. `dia_global` es el día contado
+    desde el arranque: `(semana - 1) * DIAS_POR_SEMANA + día`.
+    """
+    n = zlib.crc32(f"{semilla}:{tecnico_id}:{dia_global}".encode("utf-8")) % 100
+    if n < PROB_DIA_JUSTO * 100:
+        return 2
+    if n < (PROB_DIA_JUSTO + (1 - PROB_DIA_JUSTO - PROB_DIA_PRODUCTIVO)) * 100:
+        return 3
+    return 4
 
 # Probabilidad de que el cliente no pueda en el turno propuesto (se le ofrece otro).
 PROB_NO_PUEDE = 0.12

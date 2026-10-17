@@ -16,7 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from llm import LLMClient, get_metrics
-from llm.config import get_config
+from llm.config import LLMConfig, get_config
 from schemas import TeleoperadorResponse
 from store import Store
 
@@ -60,7 +60,17 @@ sim.inicializar()
 # blanco frente a un jurado.
 if not store.conn.execute("SELECT 1 FROM resumen_mes LIMIT 1").fetchone():
     try:
-        sim.correr_todo(MESES_AUTOMATICOS)
+        # La SEMILLA de los 6 meses corre con el motor LOCAL: es historia
+        # precargada y queremos que el arranque sea en segundos (Render corta los
+        # arranques lentos y el plan gratis no guarda la base). AMD se usa en TODO
+        # lo que pasa EN VIVO: la Sala de Agentes del mes 7 en adelante, las
+        # reuniones del gerente y la llamada en vivo.
+        llm_real = sim.llm
+        sim.llm = LLMClient(config=LLMConfig(use_mock=True, model="mock"))
+        try:
+            sim.correr_todo(MESES_AUTOMATICOS)
+        finally:
+            sim.llm = llm_real
     except Exception as exc:  # noqa: BLE001 — nada debe apagar el arranque
         import logging
         logging.getLogger("nexus.api").exception(
