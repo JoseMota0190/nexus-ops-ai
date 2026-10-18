@@ -16,12 +16,11 @@ services:
       # Si el 8000 está ocupado en tu máquina: BACKEND_PORT=8010 docker compose up
       - "${BACKEND_PORT:-8000}:8000"
     environment:
-      # Mock por defecto para que la demo corra sin gastar créditos AMD.
-      # Para usar AMD de verdad: USE_MOCK=false en .env
+      # AMD de verdad: USE_MOCK=false en .env (ya está así) + LLM_API_KEY + LLM_MODEL.
+      # Si no hay .env, arranca en mock para que la demo corra sin gastar créditos.
       USE_MOCK: ${USE_MOCK:-true}
-      # AMD Radeon Cloud (endpoints compatibles con OpenAI, gratis y sin aprobación).
-      # El catálogo gratis no trae Gemma: si desplegamos Gemma en instancia propia,
-      # acá se cambia la URL a la de la instancia (p. ej. /spaces/<id>/v1).
+      # AMD Radeon Cloud (endpoint compatible con OpenAI). Ya sirve Gemma:
+      # LLM_MODEL=Gemma-4-31B-IT (no hace falta instancia propia ni vLLM).
       LLM_BASE_URL: ${LLM_BASE_URL:-https://developer.amd.com.cn/radeon/api/v1}
       LLM_API_KEY: ${LLM_API_KEY:-}
       LLM_MODEL: ${LLM_MODEL:-}
