@@ -177,17 +177,20 @@ def test_dia_en_vivo_corre_en_segundo_plano_y_termina():
 
 
 def test_no_se_puede_correr_dos_cosas_juntas():
-    """Mientras hay un día en vivo, otro 'correr un día' tiene que rebotar (409)."""
-    from api import _DIA, _DIA_LOCK
+    """La sala de espera: mientras alguien tiene el turno, otro rebota (409)."""
+    from api import _reclamar_turno, _liberar_turno
 
-    with _DIA_LOCK:
-        _DIA["corriendo"] = True
+    _reclamar_turno("test")
     try:
         assert client.post("/api/dia").status_code == 409
         assert client.post("/api/mes").status_code == 409
+        assert client.post("/api/dia/en-vivo").status_code == 409
     finally:
-        with _DIA_LOCK:
-            _DIA["corriendo"] = False
+        _liberar_turno()
+
+    # Con el turno libre, otra vez responde normal.
+    client.post("/api/modo", json={"rapido": True})
+    assert client.post("/api/dia").status_code == 200
 
 
 if __name__ == "__main__":

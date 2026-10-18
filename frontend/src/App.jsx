@@ -118,6 +118,14 @@ export default function App() {
   // we ask how it is going every 2 s, so the bubbles keep appearing. When it
   // finishes, we open the day's movie (which already carries all the events).
   const hayVivo = enVivo !== null;
+
+  // THE WAITING ROOM: there is a single simulation turn. If somebody else is
+  // running it (a day, a month, a language change…), we lock the buttons and show
+  // a friendly notice until their turn ends. The status poll (every 4 s) unlocks
+  // it on its own, because the backend frees the turn when it finishes. Our own
+  // run is never treated as "someone else" (hayVivo / ocupado).
+  const trabajoAjeno = !!estado?.turno?.activo && !hayVivo && !ocupado;
+
   useEffect(() => {
     if (!hayVivo) return undefined;
     let cancelado = false;
@@ -268,19 +276,15 @@ export default function App() {
   if (errEstado && !estado) {
     return (
       <div className="app">
-        <div className="aviso aviso-error" style={{ marginTop: 18 }}>
-          <span>🚧</span>
+        <div className="aviso aviso-info" style={{ marginTop: 18 }}>
+          <span>😴</span>
           <span>
-            <strong>{t("I couldn't reach the simulation engine.",
-                        "No pude alcanzar el motor de simulación.")}</strong>
+            <strong>{t("Waking up the demo…", "Despertando la demo…")}</strong>
             <br />
-            {errEstado}
-            <br />
-            {t("Make sure it is running with", "Fijate que esté corriendo con")}{" "}
-            <code>.\.venv\Scripts\python.exe -m uvicorn api:app --port 8000</code>{" "}
-            {t("from the", "desde la carpeta")}
-            <code>backend</code> {t("folder, then reload the page.",
-                                    "y después recargá la página.")}
+            {t("The free server takes a few seconds to wake up after a rest. " +
+               "This page retries on its own — give it a moment.",
+               "El servidor gratuito tarda unos segundos en despertar después de " +
+               "un descanso. Esta página reintenta sola: dale un momento.")}
           </span>
         </div>
       </div>
@@ -331,6 +335,14 @@ export default function App() {
                      "El motor se tomó un respiro: sigo reintentando solo.")}</span>
           </div>
         ) : null}
+
+        {trabajoAjeno ? (
+          <div className="aviso aviso-info aviso-flotante">
+            <span>⏳</span>
+            <span>{t("Someone is running a simulation right now. Your turn is coming and the buttons unlock on their own.",
+                     "Alguien está corriendo una simulación ahora mismo. Ya llega tu turno y los botones se destraban solos.")}</span>
+          </div>
+        ) : null}
       </main>
 
       {/* The FOOTER: the simulation box + the Agent Room + the AMD strip. */}
@@ -339,7 +351,7 @@ export default function App() {
           <button
             className="boton boton-primario"
             onClick={correrUnDia}
-            disabled={!!ocupado || !!pelicula}
+            disabled={!!ocupado || !!pelicula || trabajoAjeno}
           >
             {ocupado === "dia" ? t("Running the day…", "Corriendo el día…")
               : t("▶ Run one day", "▶ Correr un día")}
@@ -352,7 +364,7 @@ export default function App() {
                 key={v}
                 className={`dia-chip ${v === velocidad ? "activo" : ""}`}
                 onClick={() => setVelocidad(v)}
-                disabled={!!pelicula}
+                disabled={!!pelicula || trabajoAjeno}
               >
                 {v} min
               </button>
@@ -363,7 +375,7 @@ export default function App() {
           <button
             className={`boton boton-chico ${rapido ? "boton-fantasma" : "boton-primario"}`}
             onClick={cambiarModo}
-            disabled={!!ocupado || !!pelicula}
+            disabled={!!ocupado || !!pelicula || trabajoAjeno}
             title={t("In live room mode, the AI negotiates every sale (from month 7 on)",
                      "En modo sala, la IA negocia cada venta (desde el mes 7)")}
           >

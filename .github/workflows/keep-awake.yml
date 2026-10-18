@@ -1,0 +1,31 @@
+# ============================================================
+# Keep the demo awake.
+#
+# The free Render backend falls asleep after ~15 minutes without visitors, and
+# when it wakes up it starts the database over. This little robot pings it every
+# 5 minutes so it stays awake while the judges visit the app — and whatever a
+# judge simulates stays saved in the database.
+#
+# It needs no account: it runs inside this same GitHub repo.
+#
+# Note: GitHub may delay a scheduled run a few minutes under load, so 5 minutes
+# is a safe margin below Render's 15-minute rest. GitHub turns off scheduled
+# workflows after 60 days with no activity in the repo; if that happens, open
+# this page and press "Run workflow", or make any commit.
+# ============================================================
+name: Keep the demo awake
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping the backend so it does not fall asleep
+        run: |
+          curl -fsS --max-time 90 \
+            https://nexus-ops-ai-backend.onrender.com/api/estado > /dev/null \
+            && echo "The backend is awake."

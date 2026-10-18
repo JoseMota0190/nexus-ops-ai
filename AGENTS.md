@@ -264,6 +264,30 @@ Todo verificado: **77 tests + 46 smoke en verde**. Cambios:
    `DIRECTIVE=`.
 6. **⚠️ Bug del modo día a día** ya corregido en el commit `72d8002` (ver arriba).
 
+### 🧍 Sala de espera + anti-sueño (18 oct) ⏳ sin pushear
+
+- **Un solo turno de simulación.** Todos los puntos que simulan (`POST /api/dia`,
+  `/api/mes`, `/api/todo`, `/api/dia/en-vivo`, `/api/modo`, `/api/reiniciar`,
+  `POST /api/idioma`) pasan por `_reclamar_turno` / `_liberar_turno` en
+  `backend/api.py`. Si ya hay uno corriendo (lo esté corriendo **quien lo esté**),
+  el otro recibe un **409 amable** (*"Otra persona ya está corriendo la simulación…"*)
+  en vez de pisar la misma base. Es la **sala de espera** para cuando entran dos
+  jueces a la vez.
+- **La pantalla se bloquea sola.** `/api/estado` ahora expone `turno {activo, que}`.
+  El frontend (`App.jsx`) calcula `trabajoAjeno` y, mientras otra persona simula,
+  muestra un aviso y **deshabilita los botones**; el sondeo cada 4 s los destraba
+  solo cuando el turno queda libre. La corrida propia nunca cuenta como "ajena".
+- **Mensaje amable al despertar.** La pantalla de "no pude alcanzar el motor" pasó
+  a un aviso bilingüe *"Despertando la demo…"* (pensado para el servidor gratuito
+  que se duerme), sin el comando técnico de uvicorn.
+- **Anti-sueño (cron).** `.github/workflows/keep-awake.yml` hace ping al backend de
+  Render **cada 5 minutos** (GitHub Actions, sin cuentas nuevas) para que no se
+  duerma y lo que simula un juez quede guardado. OJO: la base online sigue siendo
+  **efímera** (sin disco persistente): aguanta el sueño evitado por el cron, pero un
+  **redeploy la vuelve a sembrar**.
+- **Tests:** `test_api.py::test_no_se_puede_correr_dos_cosas_juntas` ahora prueba la
+  sala de espera (409 con el turno tomado). **77 tests + smoke en verde.**
+
 > **Interruptor de la pantalla:** el menú ☰ muestra **solo los 4 sectores**. Si más adelante se
 > quiere volver a ofrecer algún panel viejo, alcanza con agregarlo en
 > `frontend/src/components/MenuLateral.jsx` (los componentes se borraron; habría que recuperarlos

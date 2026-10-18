@@ -111,17 +111,41 @@ def _construir_mundo(lang: str) -> "tuple[Store, Simulacion]":
 
 # El DÍA EN VIVO: el que corre en segundo plano, negociando venta por venta, para
 # que la pantalla vea a los agentes hablar mientras piensan (AMD tarda ~15 s por
-# agente y un día del mes 7 tiene ~24 ventas: son minutos). Mientras corre, no se
-# deja arrancar otro día ni correr meses.
+# agente y un día del mes 7 tiene ~24 ventas: son minutos).
 _DIA_LOCK = threading.Lock()
 _DIA: dict = {"corriendo": False, "listo": False, "error": None, "resultado": None}
 
+# El TURNO DE SIMULACIÓN: hay UNO solo, compartido por todos. Mientras alguien
+# está simulando (un día, un mes, cambiar de idioma o rearmar la empresa), NADIE
+# más puede simular: se le avisa con un mensaje amable y espera su turno. Es la
+# "sala de espera": dos jueces no se pisan la misma base.
+_TURNO_LOCK = threading.Lock()
+_TURNO: dict = {"activo": False, "que": None}
 
-def _dia_ocupado_o_409(accion: str) -> None:
-    if _DIA["corriendo"]:
-        raise HTTPException(
-            409, t(f"A day is already running live. Wait for it to finish to {accion}.",
-                   f"Ya hay un día corriendo en vivo. Esperá a que termine para {accion}."))
+
+def _reclamar_turno(que: str) -> None:
+    """Toma el único turno de simulación.
+
+    Si ya hay uno corriendo (lo esté corriendo quien lo esté), frena con un aviso
+    amable para que el otro espere. Así nunca hay dos simulaciones a la vez sobre
+    la misma base.
+    """
+    with _TURNO_LOCK:
+        if _TURNO["activo"]:
+            raise HTTPException(
+                409,
+                t("Someone is already running the simulation. Wait a moment — your "
+                  "turn is coming and the buttons unlock on their own.",
+                  "Otra persona ya está corriendo la simulación. Esperá un momento: "
+                  "ya llega tu turno y los botones se destraban solos."))
+        _TURNO["activo"] = True
+        _TURNO["que"] = que
+
+
+def _liberar_turno() -> None:
+    with _TURNO_LOCK:
+        _TURNO["activo"] = False
+        _TURNO["que"] = None
 
 
 # Arranca el mundo INGLÉS (el que ve el jurado por defecto). El español se arma
@@ -158,6 +182,8 @@ def estado() -> dict:
         "SELECT mes, accion, valor, motivo, aprobada, aviso FROM decisiones_gerente "
         "ORDER BY id DESC LIMIT 12").fetchall()]
     e["motivos"] = motivos()
+    with _TURNO_LOCK:
+        e["turno"] = {"activo": _TURNO["activo"], "que": _TURNO["que"]}
     e["puede_avanzar"] = True  # sin tope: la app puede seguir día a día
     return e
 
@@ -199,19 +225,25 @@ def avanzar_mes() -> dict:
     La app no tiene tope de meses: pasada la meta, la empresa se ESTABILIZA y
     sigue operando (el Gerente deja de contratar sin control).
     """
-    _dia_ocupado_o_409("run a month")
-    return sim.correr_mes()
+    _reclamar_turno("month")
+    try:
+        return sim.correr_mes()
+    finally:
+        _liberar_turno()
 
 
 @app.post("/api/todo")
 def correr_todo(meses: int = 6) -> dict:
     """Corre de una los primeros `meses` (la fase automática: 6 meses solos)."""
-    _dia_ocupado_o_409("run several months")
-    salidas = []
-    for _ in range(max(0, meses)):
-        salidas.append(sim.correr_mes())
-    return {"corridos": len(salidas), "ultimo": salidas[-1] if salidas else None,
-            "estado": sim.estado()}
+    _reclamar_turno("months")
+    try:
+        salidas = []
+        for _ in range(max(0, meses)):
+            salidas.append(sim.correr_mes())
+        return {"corridos": len(salidas), "ultimo": salidas[-1] if salidas else None,
+                "estado": sim.estado()}
+    finally:
+        _liberar_turno()
 
 
 @app.post("/api/dia")
@@ -219,8 +251,11 @@ def correr_un_dia() -> dict:
     """Corre un día. Cuando se acaba la última semana del mes, el mes se cierra
     solo: reunión del Gerente (al abrir), informes de los 4 sectores e ingresos
     recurrentes (al cerrar). Sin tope: se puede seguir día por día indefinidamente."""
-    _dia_ocupado_o_409("run a day")
-    return sim.correr_dia_completo()
+    _reclamar_turno("day")
+    try:
+        return sim.correr_dia_completo()
+    finally:
+        _liberar_turno()
 
 
 @app.post("/api/dia/en-vivo")
@@ -232,9 +267,8 @@ def dia_en_vivo() -> dict:
     los agentes todavía están pensando. Cuando termina, `GET /api/dia/en-vivo`
     trae el resultado completo (el detalle del día y la película).
     """
+    _reclamar_turno("live day")
     with _DIA_LOCK:
-        if _DIA["corriendo"]:
-            raise HTTPException(409, "A day is already running live.")
         _DIA.update({"corriendo": True, "listo": False, "error": None,
                      "resultado": None})
 
@@ -246,6 +280,8 @@ def dia_en_vivo() -> dict:
         except Exception as exc:  # noqa: BLE001 — el error se muestra, no tumba la app
             with _DIA_LOCK:
                 _DIA.update({"corriendo": False, "listo": True, "error": str(exc)})
+        finally:
+            _liberar_turno()  # se acabó el día: el turno queda libre para el otro
 
     threading.Thread(target=_trabajo, name="dia-en-vivo", daemon=True).start()
     return {"corriendo": True}
@@ -271,17 +307,24 @@ def dia_en_vivo_estado() -> dict:
 @app.post("/api/modo")
 def modo(m: ModoSim) -> dict:
     """Interruptor: 'modo sala' (los agentes negocian) vs 'modo rápido' (sin charla)."""
-    sim.modo_sala = not m.rapido
-    return {"ok": True, "rapido": m.rapido, "modo_sala": sim.modo_sala,
-            "enjambre_desde": sim.enjambre_desde}
+    _reclamar_turno("mode")
+    try:
+        sim.modo_sala = not m.rapido
+        return {"ok": True, "rapido": m.rapido, "modo_sala": sim.modo_sala,
+                "enjambre_desde": sim.enjambre_desde}
+    finally:
+        _liberar_turno()
 
 
 @app.post("/api/reiniciar")
 def reiniciar() -> dict:
-    _dia_ocupado_o_409("reset")
-    sim.empresa = sim.inicializar(reiniciar=True)
-    sim.enjambre_desde = 7
-    return sim.estado()
+    _reclamar_turno("reset")
+    try:
+        sim.empresa = sim.inicializar(reiniciar=True)
+        sim.enjambre_desde = 7
+        return sim.estado()
+    finally:
+        _liberar_turno()
 
 
 @app.post("/api/idioma")
@@ -296,13 +339,16 @@ def cambiar_idioma(body: Idioma) -> dict:
     lang = body.lang if body.lang in ("en", "es") else "en"
     if lang == _IDIOMA:
         return {"idioma": _IDIOMA}
-    _dia_ocupado_o_409("change the language")
-    if lang not in _MUNDOS:
-        _MUNDOS[lang] = _construir_mundo(lang)
-    store, sim = _MUNDOS[lang]
-    set_idioma(lang)
-    _IDIOMA = lang
-    return {"idioma": _IDIOMA, "estado": sim.estado()}
+    _reclamar_turno("language change")
+    try:
+        if lang not in _MUNDOS:
+            _MUNDOS[lang] = _construir_mundo(lang)
+        store, sim = _MUNDOS[lang]
+        set_idioma(lang)
+        _IDIOMA = lang
+        return {"idioma": _IDIOMA, "estado": sim.estado()}
+    finally:
+        _liberar_turno()
 
 
 # ---------------------------------------------------------- actas / log
