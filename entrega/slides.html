@@ -1,0 +1,239 @@
+<!doctype html>
+<!--
+  nexus-ops-ai — Slides para la entrega (9 diapositivas).
+  CÓMO EXPORTAR A PDF:
+    1. Abrí este archivo con doble clic (se abre en el navegador).
+    2. Ctrl+P (Imprimir).
+    3. Destino: "Guardar como PDF".
+    4. Diseño: HORIZONTAL (landscape). Márgenes: Ninguno.
+       Marcá "Gráficos de fondo" / "Background graphics".
+    5. Guardar como  nexus-ops-ai-slides.pdf
+  También sirve para mostrar en pantalla (F11 = pantalla completa).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>nexus-ops-ai — slides</title>
+<style>
+  :root{
+    --fondo:#060B1F; --panel:#0E1A44; --borde:#24356B; --texto:#EAF0FB;
+    --suave:#9FB0D0; --azul:#2F6BFF; --violeta:#7A5AF8; --cyan:#22D3EE;
+    --verde:#2FCE8F; --ambar:#F5B942; --rojo:#FF5C7A;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#02040c;color:var(--texto);
+    font-family:"Inter","Segoe UI",system-ui,Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .slide{
+    position:relative;width:1280px;height:720px;margin:18px auto;padding:64px 72px;
+    background:
+      radial-gradient(1100px 520px at 88% -12%, rgba(122,90,248,.22), transparent 60%),
+      radial-gradient(900px 480px at -8% 112%, rgba(34,211,238,.16), transparent 60%),
+      var(--fondo);
+    border:1px solid var(--borde);border-radius:18px;overflow:hidden;
+    page-break-after:always;break-after:page;
+  }
+  .marca{display:flex;align-items:center;gap:14px;position:absolute;top:34px;left:72px;right:72px}
+  .chev{width:34px;height:34px;flex:0 0 auto}
+  .marca b{font-family:"Montserrat","Segoe UI",sans-serif;font-weight:800;letter-spacing:.5px;font-size:19px}
+  .marca .punto{width:8px;height:8px;border-radius:50%;background:var(--verde);box-shadow:0 0 12px var(--verde)}
+  .nro{margin-left:auto;color:var(--suave);font-size:14px;letter-spacing:2px}
+  h1{font-family:"Montserrat",sans-serif;font-size:66px;line-height:1.02;margin:120px 0 0;font-weight:800;letter-spacing:-1px}
+  h2{font-family:"Montserrat",sans-serif;font-size:40px;line-height:1.08;margin:96px 0 26px;font-weight:800;letter-spacing:-.5px}
+  h2 .g{background:linear-gradient(90deg,var(--azul),var(--violeta));-webkit-background-clip:text;background-clip:text;color:transparent}
+  p{font-size:22px;line-height:1.5;color:var(--texto);margin:0 0 16px}
+  .sub{color:var(--suave);font-size:22px}
+  .kicker{color:var(--cyan);font-size:14px;letter-spacing:3px;text-transform:uppercase;font-weight:700;margin-bottom:8px}
+  ul{margin:8px 0 0;padding-left:0;list-style:none}
+  li{font-size:24px;line-height:1.55;margin:0 0 14px;padding-left:40px;position:relative}
+  li:before{content:"";position:absolute;left:6px;top:14px;width:14px;height:14px;border-radius:4px;
+    background:linear-gradient(135deg,var(--azul),var(--violeta))}
+  .tag{display:inline-block;border:1px solid var(--borde);background:rgba(47,107,255,.12);
+    color:var(--texto);border-radius:999px;padding:8px 16px;font-size:16px;font-weight:700;margin-top:24px}
+  .pie{position:absolute;left:72px;right:72px;bottom:30px;display:flex;align-items:center;gap:14px;
+    color:var(--suave);font-size:13px;border-top:1px solid var(--borde);padding-top:14px}
+  .pie .amd{margin-left:auto;font-weight:800;color:var(--texto);letter-spacing:1px}
+  .amd-chip{display:inline-block;background:var(--rojo);color:#fff;border-radius:6px;padding:2px 8px;font-weight:800;font-size:12px;letter-spacing:1px}
+  table{width:100%;border-collapse:collapse;margin-top:18px;font-size:21px}
+  th,td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--borde)}
+  th{color:var(--suave);font-weight:700;font-size:16px;text-transform:uppercase;letter-spacing:1px}
+  td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+  .big{color:var(--verde);font-weight:800}
+  .row{display:flex;gap:22px;margin-top:8px}
+  .card{flex:1;background:linear-gradient(180deg,rgba(14,26,68,.85),rgba(6,11,31,.6));
+    border:1px solid var(--borde);border-radius:14px;padding:22px 24px}
+  .card b{font-size:20px;font-family:"Montserrat",sans-serif}
+  .card .v{font-size:40px;font-weight:800;color:var(--cyan);font-variant-numeric:tabular-nums;margin-top:6px}
+  .quote{border-left:4px solid var(--ambar);padding:10px 0 10px 20px;color:var(--ambar);font-size:24px;margin-top:10px}
+  .ok{color:var(--verde);font-weight:800}
+  .mono{font-family:ui-monospace,Consolas,monospace;background:rgba(47,107,255,.12);border:1px solid var(--borde);
+    border-radius:8px;padding:3px 9px;font-size:19px}
+  @media print{
+    html,body{background:#fff}
+    .slide{margin:0;border:0;border-radius:0}
+    @page{size:1280px 720px;margin:0}
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= 1 · TÍTULO ================= -->
+<section class="slide">
+  <div class="marca">
+    <svg class="chev" viewBox="0 0 48 48" aria-hidden="true"><defs><linearGradient id="g1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7A5AF8"/><stop offset="1" stop-color="#2F6BFF"/></linearGradient></defs><path d="M24 6 L42 42 H31 L24 24 L17 42 H6 Z" fill="url(#g1)"/></svg>
+    <b>NEXUS&nbsp;ALARM</b><span class="punto"></span>
+    <span class="nro">01 / 09</span>
+  </div>
+  <h1>nexus-ops-ai</h1>
+  <p class="sub" style="font-size:30px;margin-top:10px">The digital twin of <b>Nexus Alarm</b></p>
+  <p style="font-size:24px;max-width:900px;margin-top:26px">
+    A swarm of AI agents running the full sales operation of a small
+    security-alarm company in Buenos Aires.
+  </p>
+  <span class="tag">AMD Developer Hackathon ACT III · Reinvent Commerce</span>
+  <div class="pie"><span>nexus-ops-ai · digital twin</span><span class="amd"><span class="amd-chip">AMD</span> &nbsp;inference on AMD</span></div>
+</section>
+
+<!-- ================= 2 · PROBLEMA ================= -->
+<section class="slide">
+  <div class="marca">
+    <svg class="chev" viewBox="0 0 48 48"><path d="M24 6 L42 42 H31 L24 24 L17 42 H6 Z" fill="url(#g1)"/></svg>
+    <b>NEXUS&nbsp;ALARM</b><span class="punto"></span><span class="nro">02 / 09</span>
+  </div>
+  <h2>Every month, the owner places <span class="g">three bets</span></h2>
+  <ul>
+    <li>👥 How many <b>salespeople</b>?</li>
+    <li>🔧 How many <b>technicians</b>?</li>
+    <li>📊 How much to invest in <b>better customer data</b>?</li>
+  </ul>
+  <p style="margin-top:26px;font-size:26px">Guess wrong, and you either <b>lose sales</b> or <b>burn cash</b>.</p>
+  <p class="sub" style="font-size:26px">Small businesses don't need a dashboard — they need a decision.</p>
+  <div class="pie"><span>the problem</span><span class="amd"><span class="amd-chip">AMD</span></span></div>
+</section>
+
+<!-- ================= 3 · QUÉ ES ================= -->
+<section class="slide">
+  <div class="marca">
+    <svg class="chev" viewBox="0 0 48 48"><path d="M24 6 L42 42 H31 L24 24 L17 42 H6 Z" fill="url(#g1)"/></svg>
+    <b>NEXUS&nbsp;ALARM</b><span class="punto"></span><span class="nro">03 / 09</span>
+  </div>
+  <h2>A digital twin, <span class="g">not a dashboard</span></h2>
+  <p class="sub">We simulate <b style="color:var(--texto)">9 months</b> of a real operating rhythm:</p>
+  <ul>
+    <li>150 inbound calls a day (3 operators, 50 each)</li>
+    <li>Installations scheduled for the <b>next week</b>, Monday–Saturday, 3 slots a day</li>
+    <li>An <b>AI manager</b> that meets every month and decides how to grow</li>
+  </ul>
+  <p style="margin-top:26px">Everything is <b>persisted</b>: stop the simulation, come back later, nothing is lost.</p>
+  <div class="pie"><span>what it is</span><span class="amd"><span class="amd-chip">AMD</span></span></div>
+</section>
+
+<!-- ================= 4 · ACTOR ================= -->
+<section class="slide">
+  <div class="marca">
+    <svg class="chev" viewBox="0 0 48 48"><path d="M24 6 L42 42 H31 L24 24 L17 42 H6 Z" fill="url(#g1)"/></svg>
+    <b>NEXUS&nbsp;ALARM</b><span class="punto"></span><span class="nro">04 / 09</span>
+  </div>
+  <h2>The rule of the actor: <span class="g">the LLM talks, the program computes</span></h2>
+  <table>
+    <tr><th></th><th>Speaks (LLM on AMD)</th><th>Computes (algorithm)</th></tr>
+    <tr><td>Salesperson</td><td>✅ qualifies, notes the objection</td><td>—</td></tr>
+    <tr><td>Scheduler</td><td>✅ negotiates the slot</td><td>free slots</td></tr>
+    <tr><td>Dispatcher</td><td>explains</td><td>✅ <b>zone split + travel cost</b></td></tr>
+    <tr><td>Manager</td><td>✅ analyzes, advises</td><td>✅ <b>validates cash &amp; capacity</b></td></tr>
+  </table>
+  <p style="margin-top:22px">~40,000 calls are computed. The AI only <b>acts</b> on the ~30 shown live.</p>
+  <p class="sub">Fast, cheap, reproducible — and the agents still speak for real.</p>
+  <div class="pie"><span>who talks / who computes</span><span class="amd"><span class="amd-chip">AMD</span></span></div>
+</section>
+
+<!-- ================= 5 · DEMO ================= -->
+<section class="slide">
+  <div class="marca">
+    <svg class="chev" viewBox="0 0 48 48"><path d="M24 6 L42 42 H31 L24 24 L17 42 H6 Z" fill="url(#g1)"/></svg>
+    <b>NEXUS&nbsp;ALARM</b><span class="punto"></span><span class="nro">05 / 09</span>
+  </div>
+  <h2>What you see <span class="g">on screen</span></h2>
+  <ul>
+    <li><b>Animated map of Buenos Aires</b> filling the screen, with the Nexus logo breathing at its center</li>
+    <li>A simulation strip: <b>run a day</b> and watch the agents negotiate in the <b>live Agents Room</b></li>
+    <li>A <b>☰ menu with 4 sectors</b> — management, sales, scheduling, billing — that <b>report themselves</b> every month</li>
+    <li>Each report: <b>AMD analyzes, Evolus writes</b>, and the numbers behind it</li>
+    <li>An always-on <b>AMD strip</b> at the bottom: latency, tokens/s, fallbacks</li>
+  </ul>
+  <div class="pie"><span>the demo</span><span class="amd"><span class="amd-chip">AMD</span></span></div>
+</section>
+
+<!-- ================= 6 · GERENTE ================= -->
+<section class="slide">
+  <div class="marca">
+    <svg class="chev" viewBox="0 0 48 48"><path d="M24 6 L42 42 H31 L24 24 L17 42 H6 Z" fill="url(#g1)"/></svg>
+    <b>NEXUS&nbsp;ALARM</b><span class="punto"></span><span class="nro">06 / 09</span>
+  </div>
+  <h2>The AI manager — <span class="g">with a transparent safety net</span></h2>
+  <p>Each month it reads the numbers and moves <b>three levers</b>:<br>
+     hire operators · hire technicians · improve conversion.</p>
+  <p style="margin-top:18px">But the <b>program validates</b> every decision: cash, capacity, workload.
+     Impossible decisions are <b>rejected and logged</b>.</p>
+  <div class="quote">“You won't make it at this rate — reconsider.”</div>
+  <p style="margin-top:16px">The warning goes <b>into the minutes</b>. <span class="ok">Nothing is cooked.</span></p>
+  <div class="pie"><span>the manager</span><span class="amd"><span class="amd-chip">AMD</span></span></div>
+</section>
+
+<!-- ================= 7 · NÚMEROS ================= -->
+<section class="slide">
+  <div class="marca">
+    <svg class="chev" viewBox="0 0 48 48"><path d="M24 6 L42 42 H31 L24 24 L17 42 H6 Z" fill="url(#g1)"/></svg>
+    <b>NEXUS&nbsp;ALARM</b><span class="punto"></span><span class="nro">07 / 09</span>
+  </div>
+  <h2>9 months. Same goal: <span class="g">10 technicians, no bankruptcy</span></h2>
+  <table>
+    <tr><th></th><th class="n">Month 1</th><th class="n">Month 9</th><th class="n"></th></tr>
+    <tr><td>Sales / day</td><td class="n">6.8</td><td class="n">30.5</td><td class="n big">×4.5</td></tr>
+    <tr><td>Operators</td><td class="n">3</td><td class="n">8</td><td class="n">×2.7</td></tr>
+    <tr><td><b>Technicians</b></td><td class="n">2</td><td class="n"><b>10</b></td><td class="n ok">✅ goal met</td></tr>
+    <tr><td>Revenue / month</td><td class="n">$38.6k</td><td class="n">$313k</td><td class="n big">×8.1</td></tr>
+    <tr><td>Costs / month</td><td class="n">$9.1k</td><td class="n">$24.4k</td><td class="n">×2.7</td></tr>
+  </table>
+  <p style="margin-top:22px"><b style="color:var(--verde)">Revenue ×8.1 while costs grow ×2.7.</b>
+     Sales grow almost 5× with less than 3× the operators — because the manager improves conversion, not just headcount.</p>
+  <div class="pie"><span>the numbers</span><span class="amd"><span class="amd-chip">AMD</span></span></div>
+</section>
+
+<!-- ================= 8 · AMD + EVOLUS ================= -->
+<section class="slide">
+  <div class="marca">
+    <svg class="chev" viewBox="0 0 48 48"><path d="M24 6 L42 42 H31 L24 24 L17 42 H6 Z" fill="url(#g1)"/></svg>
+    <b>NEXUS&nbsp;ALARM</b><span class="punto"></span><span class="nro">08 / 09</span>
+  </div>
+  <h2>The brain runs on an <span class="g">open model served on AMD</span></h2>
+  <ul>
+    <li><b>Gemma</b> served on AMD — inference on AMD infrastructure</li>
+    <li><b>Every single call measured</b>: latency p50/p95, tokens, tokens/s — live on the bottom strip</li>
+    <li>If the endpoint fails, the system <b>degrades gracefully and reports it</b> (counted as “fallbacks”)</li>
+  </ul>
+  <p style="margin-top:20px"><b>The business reports to 4 sectors.</b> Each month: the program computes the numbers,
+     <b>AMD's model analyzes them, Evolus writes the report</b> — with a local writer as a safety net.</p>
+  <p style="margin-top:16px"><b style="color:var(--cyan)">The forecast is Monte Carlo, not the language model.</b>
+     The model talks. The math decides.</p>
+  <div class="pie"><span>AMD + Evolus</span><span class="amd"><span class="amd-chip">AMD</span></span></div>
+</section>
+
+<!-- ================= 9 · DATOS→ACCIÓN ================= -->
+<section class="slide">
+  <div class="marca">
+    <svg class="chev" viewBox="0 0 48 48"><path d="M24 6 L42 42 H31 L24 24 L17 42 H6 Z" fill="url(#g1)"/></svg>
+    <b>NEXUS&nbsp;ALARM</b><span class="punto"></span><span class="nro">09 / 09</span>
+  </div>
+  <h2>From customer data → <span class="g">recommendation → action</span></h2>
+  <p>Every objection is logged (<i>too expensive</i>, <i>already has one</i>, <i>not interested</i>).
+     That is the manager's raw material: it changes the offer, the script and the hiring plan —
+     month after month.</p>
+  <p style="margin-top:22px;font-size:26px"><b>A working product:</b>
+     <span class="mono">docker compose up --build</span> → running</p>
+  <p style="margin-top:18px">Open source (MIT) · Containerized · Web demo · README that runs</p>
+  <span class="tag" style="margin-top:26px">github.com/JoseMota0190/nexus-ops-ai</span>
+  <div class="pie"><span>data → action</span><span class="amd"><span class="amd-chip">AMD</span></span></div>
+</section>
+
+</body>
+</html>
