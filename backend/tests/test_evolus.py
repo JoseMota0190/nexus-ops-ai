@@ -336,6 +336,30 @@ def test_evaluar_lote_da_numeros_coherentes():
     assert r["defectos_detectados"] + r["defectos_fallados"] == r["defectos_totales"]
 
 
+def test_deteccion_completa_sin_falsas_alarmas():
+    """El extractor detecta TODO lo etiquetable y no inventa defectos.
+
+    Único caso legítimo "no etiquetable": si a la factura le tocó un valor
+    inválido (CUIT/fecha) Y ADEMÁS que ese campo quede vacío por `campo_faltante`
+    — el documento igual se marca defectuoso (campo_faltante), pero ya no hay
+    valor inválido que etiquetar.
+    """
+    for f in generar_facturas(500, seed=11):
+        doc = f["documento"]
+        esp = {e["tipo"] for e in f["errores"]}
+        det = {d["tipo"] for d in detectar_errores(doc)}
+        vacios = {e["campo"] for e in f["errores"] if e["tipo"] == "campo_faltante"}
+
+        faltan = set()
+        for t in esp - det:
+            campo = {"cuit_invalido": "cuit", "fecha_invalida": "fecha"}.get(t)
+            if not (campo and campo in vacios):
+                faltan.add(t)
+        assert not faltan, (f["id"], sorted(faltan))
+        if not esp:
+            assert det == set(), (f["id"], sorted(det))
+
+
 def test_endpoint_extraer_responde(monkeypatch):
     monkeypatch.setenv("EVOLUS_ENABLED", "false")
     get_config.cache_clear()
