@@ -28,7 +28,7 @@ process.on("exit", (code) => {
 });
 
 const dom = new JSDOM(
-  "<!doctype html><html lang='es'><body><div id='root'></div></body></html>",
+  "<!doctype html><html lang='en'><body><div id='root'></div></body></html>",
   { url: "http://localhost:5173/", pretendToBeVisual: true },
 );
 
@@ -102,7 +102,7 @@ const chequeos = [
   ["header sin la tira de números", !q(".tira-datos")],
   ["logo de Nexus centrado", !!q(".logo-centro") && tiene("NEXUS")],
   ["menú de simulación", !!q(".menu-simulacion")],
-  ["botón correr un día", tiene("Correr un día")],
+  ["botón correr un día", tiene("Run one day")],
   ["velocidad 3 min", tiene("3 min")],
   ["velocidad 6 min", tiene("6 min")],
   ["velocidad 9 min", tiene("9 min")],
@@ -125,17 +125,17 @@ await espera(150);
 
 chequeos.push(["menú lateral abierto", !!q(".menu-lateral")]);
 chequeos.push(["menú con 4 sectores", todos(".menu-item").length === 4]);
-chequeos.push(["sector Gerencia", tiene("Gerencia")]);
-chequeos.push(["sector Ventas", tiene("Ventas")]);
-chequeos.push(["sector Agenda", tiene("Agenda y técnicos")]);
-chequeos.push(["sector Facturación", tiene("Facturación")]);
+chequeos.push(["sector Gerencia", tiene("Management")]);
+chequeos.push(["sector Ventas", tiene("Sales")]);
+chequeos.push(["sector Agenda", tiene("Scheduling & technicians")]);
+chequeos.push(["sector Facturación", tiene("Billing")]);
 
 // Cada sector tiene que abrir su informe del mes.
 const SECTORES = [
-  ["gerente", "Gerencia", (c) => ["informe de gerencia", c.includes("Resultado") || c.includes("mes") || c.includes("Recomendación")]],
-  ["ventas", "Ventas", (c) => ["informe de ventas", c.includes("Conversión") || c.includes("conversión") || c.includes("llamadas")]],
-  ["agenda", "Agenda", (c) => ["informe de agenda", c.includes("Instalaciones") || c.includes("Turno") || c.includes("turno")]],
-  ["facturacion", "Facturación", (c) => ["informe de facturación", c.includes("Comprobante") || c.includes("SIMULADO") || c.includes("Precisión")]],
+  ["gerente", "Management", (c) => ["informe de gerencia", c.includes("Result") || c.includes("Month") || c.includes("Recommendation")]],
+  ["ventas", "Sales", (c) => ["informe de ventas", c.includes("Conversion") || c.includes("calls") || c.includes("Sales")]],
+  ["agenda", "Scheduling & technicians", (c) => ["informe de agenda", c.includes("Installs") || c.includes("slot") || c.includes("Scheduling")]],
+  ["facturacion", "Billing", (c) => ["informe de facturación", c.includes("Invoice") || c.includes("SIMULATED") || c.includes("precision")]],
 ];
 
 for (const [id, nombre, chequeo] of SECTORES) {
@@ -174,7 +174,7 @@ chequeos.push([
   !!q(".vivo-envoltorio") || !!q(".pelicula-envoltorio"),
 ]);
 if (q(".vivo-envoltorio")) {
-  chequeos.push(["el cartel dice DÍA EN VIVO", (q(".vivo-cab")?.textContent ?? "").includes("VIVO")]);
+  chequeos.push(["el cartel dice LIVE DAY", (q(".vivo-cab")?.textContent ?? "").includes("LIVE")]);
 }
 
 let hayPelicula = !!q(".pelicula-envoltorio");
@@ -188,6 +188,29 @@ if (hayPelicula) {
   chequeos.push(["contadores de la película", todos(".pelicula-contador").length === 6]);
   chequeos.push(["la cinta tiene filas", todos(".cinta-fila").length > 0]);
 }
+
+// ------------------------------------------------------- idioma ES / EN
+// El botón de idioma cambia TODO el sitio. Al tocar ES el backend arma su base
+// (la primera vez tarda unos segundos) y la pantalla se re-renderiza en español.
+chequeos.push([
+  "botón de idioma ES/EN en el header",
+  !!q(".tira-idioma") && todos(".tira-idioma .idioma-chip").length === 2,
+]);
+const btnEs = todos(".tira-idioma .idioma-chip").find((b) => b.textContent.trim() === "ES");
+if (btnEs) {
+  clic(btnEs);
+  await espera(9000); // la primera vez el español arma su base
+  const enEspanol =
+    tiene("Los 4 sectores") || tiene("Correr un día") || tiene("Gemelo digital");
+  chequeos.push(["el sitio pasa a español", enEspanol]);
+  const btnEn = todos(".tira-idioma .idioma-chip").find((b) => b.textContent.trim() === "EN");
+  if (btnEn) {
+    clic(btnEn);
+    await espera(2500);
+    chequeos.push(["el sitio vuelve a inglés", tiene("Run one day") || tiene("The 4 sectors")]);
+  }
+}
+
 
 let mal = 0;
 const lineas = [];

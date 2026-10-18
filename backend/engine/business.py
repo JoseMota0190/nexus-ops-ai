@@ -23,11 +23,11 @@ from dataclasses import dataclass, field, replace
 # ---------------------------------------------------------------- productos
 # Precios en USD (empresa ficticia, simulada).
 PRODUCTOS: dict[str, tuple[str, float]] = {
-    "hogar_basico": ("Kit Hogar Básico", 180.0),
-    "hogar_plus": ("Kit Hogar Plus", 320.0),
-    "comercial": ("Kit Comercial", 550.0),
-    "sensor_inundacion": ("Sensor de inundación", 40.0),
-    "extensor_zona": ("Extensor de zona", 25.0),
+    "hogar_basico": ("Home Basic Kit", 180.0),
+    "hogar_plus": ("Home Plus Kit", 320.0),
+    "comercial": ("Commercial Kit", 550.0),
+    "sensor_inundacion": ("Flood sensor", 40.0),
+    "extensor_zona": ("Zone extender", 25.0),
 }
 
 # Monitoreo mensual según tipo de plan (ingreso recurrente por cliente activo).
@@ -61,7 +61,7 @@ TURNO_EXTRA = "6pm"                  # el 4º turno: sólo en un día productivo
 TURNOS_DIA = (TURNO_MANANA, TURNO_MEDIO, TURNO_TARDE)
 TURNOS_TODOS = TURNOS_DIA + (TURNO_EXTRA,)
 TURNO_HORA = {"9am": "09:00", "12pm": "12:00", "4pm": "16:00", "6pm": "18:00"}
-DIAS_SEMANA = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado")
+DIAS_SEMANA = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
 
 # La capacidad de un técnico NO es fija (decidido con el autor): en promedio 3
 # instalaciones por día, pero un día con contratiempo hace 2 y un día productivo

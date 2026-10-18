@@ -28,10 +28,17 @@ from schemas import CoordinacionResponse, TurnoOperador, TurnoTecnicos
 from .agenda import Cita, ResultadoAgenda, tecnicos_de, turnos_ocupados
 from .business import (DIAS_POR_SEMANA, TURNO_HORA, TURNOS_DIA, TURNOS_TODOS,
                        capacidad_tecnico_dia, turnos_de_capacidad)
+from idioma import t
 from .zones import distancia_aprox, zona_por_nombre
 
 # Cuántas opciones de turno se le muestran al coordinador de agenda (pizarra chica).
 _OPCIONES_MAX = 8
+
+
+def _msg_idioma() -> dict[str, str]:
+    """Le dice al agente (IA real) en qué idioma responder."""
+    return {"role": "system",
+            "content": t("Write your reply in ENGLISH.", "Escribí tu respuesta en ESPAÑOL.")}
 
 
 @dataclass
@@ -121,7 +128,7 @@ def _preferencia(rng: random.Random) -> dict:
 def _nombre_cliente(store, cliente_id: int) -> str:
     fila = store.conn.execute("SELECT nombre FROM clientes WHERE id = ?",
                               (cliente_id,)).fetchone()
-    return fila["nombre"] if fila else f"cliente {cliente_id}"
+    return fila["nombre"] if fila else t(f"client {cliente_id}", f"cliente {cliente_id}")
 
 
 # ------------------------------------------------------------------- charla
@@ -136,9 +143,9 @@ def negociar_venta(llm: LLMClient, store, venta: dict, opciones: list[dict],
     # Turno 1: el teleoperador propone a dónde mandar la venta.
     op = llm.complete(
         agent="operador",
-        messages=[{"role": "user", "content": json.dumps({
+        messages=[_msg_idioma(), {"role": "user", "content": json.dumps({
             "cliente": cliente, "barrio": barrio,
-            "producto": venta.get("producto", "una alarma"),
+            "producto": venta.get("producto") or t("an alarm", "una alarma"),
             "preferencia": pref}, ensure_ascii=False)}],
         schema=TurnoOperador,
     )
@@ -147,7 +154,7 @@ def negociar_venta(llm: LLMClient, store, venta: dict, opciones: list[dict],
     # Turno 2: el coordinador de agenda elige un turno de la pizarra.
     ag = llm.complete(
         agent="agenda",
-        messages=[{"role": "user", "content": json.dumps({
+        messages=[_msg_idioma(), {"role": "user", "content": json.dumps({
             "cliente": cliente, "barrio": barrio,
             "dia_preferido": op.dia_preferido, "turno_preferido": op.turno_preferido,
             "turnos_libres": [{"dia": o["dia"], "turno": o["turno"]} for o in opciones]},
@@ -163,7 +170,7 @@ def negociar_venta(llm: LLMClient, store, venta: dict, opciones: list[dict],
     candidatos = elegido["candidatos"]
     te = llm.complete(
         agent="tecnicos",
-        messages=[{"role": "user", "content": json.dumps({
+        messages=[_msg_idioma(), {"role": "user", "content": json.dumps({
             "cliente": cliente, "barrio": barrio, "dia": dia, "turno": turno,
             "candidatos": candidatos}, ensure_ascii=False)}],
         schema=TurnoTecnicos,

@@ -1,44 +1,42 @@
+import { t, useIdioma } from "../i18n.js";
+
 /**
- * El menú lateral (☰). Muestra SOLO los 4 SECTORES de la empresa:
+ * The side menu (☰). It shows ONLY the 4 SECTORS of the company:
  *
- *   🧾 Gerencia · 📞 Ventas · 📅 Agenda y técnicos · 🧮 Facturación
+ *   🧾 Management · 📞 Sales · 📅 Scheduling & technicians · 🧮 Billing
  *
- * Cada uno abre su informe mensual (lo que produce el agente del sector: AMD
- * analiza, Evolus redacta). Los paneles viejos siguen en el código pero NO se
- * ofrecen acá: la pantalla quedó enfocada en los sectores.
+ * Each one opens its monthly report (what the sector's agent produces: AMD
+ * analyzes the numbers, the writer turns them into a document).
  */
 
-// Espejo de `backend/engine/sectores.py` (por si la lista del motor no llegó
-// todavía, el menú igual se dibuja).
-export const SECTORES_FALLBACK = [
-  { id: "gerente", icono: "🧾", nombre: "Gerencia", color: "azul",
-    bajada: "Rumbo, caja y decisiones del mes" },
-  { id: "ventas", icono: "📞", nombre: "Ventas · Teleoperadores", color: "verde",
-    bajada: "Llamadas, conversión y por qué no compran" },
-  { id: "agenda", icono: "📅", nombre: "Agenda y técnicos", color: "violeta",
-    bajada: "Turnos, instalaciones y reparto por zona" },
-  { id: "facturacion", icono: "🧮", nombre: "Facturación", color: "cyan",
-    bajada: "Comprobantes simulados y auditoría" },
-];
+// Mirror of `backend/engine/sectores.py`, in the active language (so if the
+// engine list has not arrived yet, the menu still draws correctly).
+export function sectoresFallback() {
+  return [
+    { id: "gerente", icono: "🧾", color: "azul",
+      nombre: t("Management", "Gerencia"),
+      bajada: t("Direction, cash and the month's decisions",
+                "Rumbo, caja y las decisiones del mes") },
+    { id: "ventas", icono: "📞", color: "verde",
+      nombre: t("Sales · Telemarketers", "Ventas · Teleoperadores"),
+      bajada: t("Calls, conversion and why they don't buy",
+                "Llamadas, conversión y por qué no compran") },
+    { id: "agenda", icono: "📅", color: "violeta",
+      nombre: t("Scheduling & technicians", "Agenda y técnicos"),
+      bajada: t("Slots, installs and zone assignment",
+                "Turnos, instalaciones y reparto por zona") },
+    { id: "facturacion", icono: "🧮", color: "cyan",
+      nombre: t("Billing", "Facturación"),
+      bajada: t("Simulated invoices and auditing",
+                "Comprobantes simulados y auditoría") },
+  ];
+}
+
+export function metaPaneles() {
+  return sectoresFallback().map((s) => ({ id: s.id, icono: s.icono, titulo: s.nombre }));
+}
 
 const SEMAFORO = { verde: "🟢", ambar: "🟡", rojo: "🔴" };
-
-// Metadatos para el título de cada caja (los 4 sectores + los paneles viejos
-// que siguen vivos en el código aunque ya no se ofrezcan en el menú).
-export const META_PANELES = [
-  ...SECTORES_FALLBACK.map((s) => ({ id: s.id, icono: s.icono, titulo: s.nombre })),
-  { id: "sala", icono: "🗣️", titulo: "Sala de Agentes" },
-  { id: "kpis", icono: "📊", titulo: "KPIs del negocio" },
-  { id: "dia", icono: "📅", titulo: "Detalle del día corrido" },
-  { id: "llamadas", icono: "📞", titulo: "Telégrafo de llamadas" },
-  { id: "motivos", icono: "💬", titulo: "Motivos: por qué no se vende" },
-  { id: "gerencia", icono: "🧾", titulo: "Reunión mensual de gerencia" },
-  { id: "evolucion", icono: "📈", titulo: "Evolución mes a mes" },
-  { id: "mapa", icono: "🗺️", titulo: "Mapa de CABA" },
-  { id: "escenario", icono: "⚙️", titulo: "¿Qué pasa si…?" },
-  { id: "agente", icono: "🤖", titulo: "Escuchar una llamada del agente" },
-  { id: "amd", icono: "🔧", titulo: "Panel AMD" },
-];
 
 export default function MenuLateral({
   abierto,
@@ -47,19 +45,23 @@ export default function MenuLateral({
   onCerrar,
   sectores,
 }) {
+  useIdioma(); // re-render the menu when the language changes
   if (!abierto) return null;
-  const lista = sectores && sectores.length ? sectores : SECTORES_FALLBACK;
+  const lista = sectores && sectores.length ? sectores : sectoresFallback();
 
   return (
     <>
       <div className="menu-fondo" onClick={onCerrar} />
-      <aside className="menu-lateral" role="dialog" aria-label="Menú de sectores">
+      <aside className="menu-lateral" role="dialog"
+             aria-label={t("Sectors menu", "Menú de sectores")}>
         <div className="menu-cab">
           <div>
-            <div className="menu-titulo">Los 4 sectores</div>
-            <div className="menu-bajada">Cada uno con su informe del mes</div>
+            <div className="menu-titulo">{t("The 4 sectors", "Los 4 sectores")}</div>
+            <div className="menu-bajada">{t("Each with its report of the month",
+                                            "Cada uno con su informe del mes")}</div>
           </div>
-          <button className="menu-x" onClick={onCerrar} aria-label="Cerrar el menú">
+          <button className="menu-x" onClick={onCerrar}
+                  aria-label={t("Close the menu", "Cerrar el menú")}>
             ✕
           </button>
         </div>
@@ -79,7 +81,7 @@ export default function MenuLateral({
                   {s.nombre}
                   {s.tiene_informe ? (
                     <span className="menu-item-mes">
-                      {SEMAFORO[s.semaforo] || "🟢"} Mes {s.mes_reporte}
+                      {SEMAFORO[s.semaforo] || "🟢"} {t("Month", "Mes")} {s.mes_reporte}
                     </span>
                   ) : null}
                 </b>
@@ -90,8 +92,8 @@ export default function MenuLateral({
         </div>
 
         <div className="menu-pie">
-          Nexus Alarm · empresa ficticia · demo AMD ACT III / lablab.ai · datos
-          simulados.
+          {t("Nexus Alarm · fictional company · AMD ACT III / lablab.ai demo · simulated data.",
+             "Nexus Alarm · empresa ficticia · demo AMD ACT III / lablab.ai · datos simulados.")}
         </div>
       </aside>
     </>

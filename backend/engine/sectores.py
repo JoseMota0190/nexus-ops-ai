@@ -11,11 +11,14 @@ Cómo se arma un informe (acordado con el autor):
 
 1. El PROGRAMA junta los NÚMEROS del mes (regla del concurso: no depende del LLM).
 2. La IA (AMD) los ANALIZA en modo agéntico y saca los hallazgos.
-3. **Evolus** lo REDACTA como documento. Si Evolus está apagado o falla, redacta el
-   escritor LOCAL (`engine/redactor.py`): la demo nunca se queda sin informe.
+3. El escritor LOCAL (`engine/redactor.py`) los REDACTA como documento. La demo
+   nunca se queda sin informe y no depende de ningún servicio externo.
 
 Los 6 meses precargados se siembran con el redactor LOCAL (instantáneo, sin
-créditos). Los meses que corre el dueño en vivo usan la IA real (AMD + Evolus).
+créditos). Los meses que corre el dueño en vivo usan la IA real (AMD).
+
+Todo el texto visible habla inglés y español (`engine/idioma.py`): los nombres de
+sector, las etiquetas de los números y el informe entero.
 """
 from __future__ import annotations
 
@@ -26,6 +29,8 @@ from llm import LLMClient
 from schemas import InformeSector
 from store import Store
 
+from idioma import es_espanol, t
+
 from . import redactor
 from .business import (
     DIAS_POR_SEMANA,
@@ -35,22 +40,47 @@ from .business import (
 )
 
 # ------------------------------------------------------------------ los 4
+# Lo que NO cambia con el idioma (orden, id, ícono y color).
 SECTORES: list[dict[str, str]] = [
-    {"id": "gerente", "icono": "🧾", "nombre": "Gerencia", "color": "azul",
-     "bajada": "Rumbo, caja y decisiones del mes"},
-    {"id": "ventas", "icono": "📞", "nombre": "Ventas · Teleoperadores", "color": "verde",
-     "bajada": "Llamadas, conversión y por qué no compran"},
-    {"id": "agenda", "icono": "📅", "nombre": "Agenda y técnicos", "color": "violeta",
-     "bajada": "Turnos, instalaciones y reparto por zona"},
-    {"id": "facturacion", "icono": "🧮", "nombre": "Facturación", "color": "cyan",
-     "bajada": "Comprobantes simulados y auditoría"},
+    {"id": "gerente", "icono": "🧾", "color": "azul"},
+    {"id": "ventas", "icono": "📞", "color": "verde"},
+    {"id": "agenda", "icono": "📅", "color": "violeta"},
+    {"id": "facturacion", "icono": "🧮", "color": "cyan"},
 ]
 
-SECTORES_POR_ID = {s["id"]: s for s in SECTORES}
+_NOMBRE = {
+    "gerente": ("Management", "Gerencia"),
+    "ventas": ("Sales · Telemarketers", "Ventas · Teleoperadores"),
+    "agenda": ("Scheduling & technicians", "Agenda y técnicos"),
+    "facturacion": ("Billing", "Facturación"),
+}
+_BAJADA = {
+    "gerente": ("Direction, cash and the month's decisions",
+                "Rumbo, caja y las decisiones del mes"),
+    "ventas": ("Calls, conversion and why they don't buy",
+               "Llamadas, conversión y por qué no compran"),
+    "agenda": ("Slots, installs and zone assignment",
+               "Turnos, instalaciones y reparto por zona"),
+    "facturacion": ("Simulated invoices and auditing",
+                    "Comprobantes simulados y auditoría"),
+}
+_ICONO = {s["id"]: s["icono"] for s in SECTORES}
+_COLOR = {s["id"]: s["color"] for s in SECTORES}
+
+
+def meta_sector(sector_id: str) -> dict[str, str]:
+    """Los datos de un sector en el idioma activo (id, ícono, color, nombre, bajada)."""
+    return {
+        "id": sector_id,
+        "icono": _ICONO.get(sector_id, "🗂️"),
+        "color": _COLOR.get(sector_id, "azul"),
+        "nombre": t(*_NOMBRE.get(sector_id, (sector_id, sector_id))),
+        "bajada": t(*_BAJADA.get(sector_id, ("", ""))),
+    }
 
 
 def es_sector(sector: str) -> bool:
-    return sector in SECTORES_POR_ID
+    return sector in _NOMBRE
 
 
 def semanas_del_mes(mes: int) -> tuple[int, int]:
@@ -72,20 +102,21 @@ def _decisiones(store: Store, mes: int) -> list[dict]:
 
 
 def _motivos_del_mes(store: Store, mes: int) -> list[dict]:
+    venta_cerrada = t("Closed the sale", "Cerró la venta")
     return [dict(r) for r in store.conn.execute(
         "SELECT motivo, COUNT(*) AS n FROM llamadas "
-        "WHERE mes = ? AND atendio = 1 AND motivo <> 'Cerró la venta' "
-        "GROUP BY motivo ORDER BY n DESC", (mes,)).fetchall()]
+        "WHERE mes = ? AND atendio = 1 AND motivo <> ? "
+        "GROUP BY motivo ORDER BY n DESC", (mes, venta_cerrada)).fetchall()]
 
 
 def _facturacion_lote(mes: int, ventas: int) -> dict:
     """Comprobantes simulados del mes + auditoría (100% local, sin red)."""
     n = max(1, min(50, int(ventas or 1)))
     try:
-        from evolus.extract import evaluar_lote
+        from .facturas import evaluar_lote
 
         lote = evaluar_lote(n, seed=1000 + mes)
-        tipos = {t: d["esperados"] for t, d in lote["defectos_por_tipo"].items()}
+        tipos = {t_: d["esperados"] for t_, d in lote["defectos_por_tipo"].items()}
         defecto_top = max(tipos, key=tipos.get) if tipos else ""
         return {
             "comprobantes": n,
@@ -96,7 +127,7 @@ def _facturacion_lote(mes: int, ventas: int) -> dict:
             "defecto_top": defecto_top,
             "defectos_por_tipo": tipos,
         }
-    except Exception:  # noqa: BLE001 — Evolus es opcional; nunca frena el informe
+    except Exception:  # noqa: BLE001 — nunca frena el informe
         return {"comprobantes": n, "precision": 0.0, "defectos": 0, "detectados": 0,
                 "tasa_deteccion": 1.0, "defecto_top": "", "defectos_por_tipo": {}}
 
@@ -137,7 +168,7 @@ def metricas_de_sector(store: Store, mes: int, sector: str) -> dict:
 
     if sector == "ventas":
         motivos = _motivos_del_mes(store, mes)
-        top = motivos[0] if motivos else {"motivo": "sin datos", "n": 0}
+        top = motivos[0] if motivos else {"motivo": t("no data", "sin datos"), "n": 0}
         return {
             "leads": int(r.get("leads") or 0),
             "llamadas": llamadas,
@@ -179,12 +210,13 @@ def metricas_de_sector(store: Store, mes: int, sector: str) -> dict:
 
 # ------------------------------------------- números "en criollo" (pantalla)
 def campos_de_sector(sector: str, m: dict) -> list[dict]:
-    """Lista lista para mostrar: {etiqueta, valor} con formato argentino."""
+    """Lista lista para mostrar: {etiqueta, valor} con el formato del idioma activo."""
     def num(x: Any) -> str:
         try:
-            return f"{float(x):,.0f}".replace(",", ".")
+            s = f"{float(x):,.0f}"
         except (TypeError, ValueError):
             return str(x)
+        return s.replace(",", ".") if es_espanol() else s
 
     def usd(x: Any) -> str:
         return "USD " + num(x)
@@ -197,57 +229,66 @@ def campos_de_sector(sector: str, m: dict) -> list[dict]:
 
     if sector == "gerente":
         return [
-            {"etiqueta": "Ventas del mes", "valor": num(m.get("ventas"))},
-            {"etiqueta": "Ventas por día", "valor": str(m.get("ventas_por_dia"))},
-            {"etiqueta": "Ingresos", "valor": usd(m.get("ingresos"))},
-            {"etiqueta": "Costos", "valor": usd(m.get("costos"))},
-            {"etiqueta": "Resultado", "valor": usd(m.get("balance"))},
-            {"etiqueta": "Caja", "valor": usd(m.get("caja"))},
-            {"etiqueta": "Operadores", "valor": num(m.get("operadores"))},
-            {"etiqueta": "Técnicos", "valor": f"{num(m.get('tecnicos'))}/{num(m.get('meta_tecnicos'))}"},
-            {"etiqueta": "Clientes activos", "valor": num(m.get("clientes_activos"))},
+            {"etiqueta": t("Sales of the month", "Ventas del mes"), "valor": num(m.get("ventas"))},
+            {"etiqueta": t("Sales per day", "Ventas por día"), "valor": f"{float(m.get('ventas_por_dia') or 0):.1f}".replace(".", "," if es_espanol() else ".")},
+            {"etiqueta": t("Revenue", "Ingresos"), "valor": usd(m.get("ingresos"))},
+            {"etiqueta": t("Costs", "Costos"), "valor": usd(m.get("costos"))},
+            {"etiqueta": t("Result", "Resultado"), "valor": usd(m.get("balance"))},
+            {"etiqueta": t("Cash", "Caja"), "valor": usd(m.get("caja"))},
+            {"etiqueta": t("Operators", "Operadores"), "valor": num(m.get("operadores"))},
+            {"etiqueta": t("Technicians", "Técnicos"), "valor": f"{num(m.get('tecnicos'))}/{num(m.get('meta_tecnicos'))}"},
+            {"etiqueta": t("Active clients", "Clientes activos"), "valor": num(m.get("clientes_activos"))},
         ]
     if sector == "ventas":
         return [
-            {"etiqueta": "Leads", "valor": num(m.get("leads"))},
-            {"etiqueta": "Llamadas", "valor": num(m.get("llamadas"))},
-            {"etiqueta": "Atendidas", "valor": num(m.get("atendidas"))},
-            {"etiqueta": "Ventas", "valor": num(m.get("ventas"))},
-            {"etiqueta": "Atienden", "valor": pct(m.get("tasa_respuesta"))},
-            {"etiqueta": "Cierran", "valor": pct(m.get("tasa_cierre"))},
-            {"etiqueta": "Conversión", "valor": pct(m.get("conversion"))},
+            {"etiqueta": t("Leads", "Leads"), "valor": num(m.get("leads"))},
+            {"etiqueta": t("Calls", "Llamadas"), "valor": num(m.get("llamadas"))},
+            {"etiqueta": t("Answered", "Atendidas"), "valor": num(m.get("atendidas"))},
+            {"etiqueta": t("Sales", "Ventas"), "valor": num(m.get("ventas"))},
+            {"etiqueta": t("Answer rate", "Tasa de respuesta"), "valor": pct(m.get("tasa_respuesta"))},
+            {"etiqueta": t("Close rate", "Tasa de cierre"), "valor": pct(m.get("tasa_cierre"))},
+            {"etiqueta": t("Conversion", "Conversión"), "valor": pct(m.get("conversion"))},
         ]
     if sector == "agenda":
+        turnos = {"9am": t("9am", "9am"), "12pm": t("12pm", "12pm"), "4pm": t("4pm", "4pm")}
         return [
-            {"etiqueta": "Instalaciones", "valor": num(m.get("instalaciones"))},
-            {"etiqueta": "Visitas agendadas", "valor": num(m.get("citas"))},
-            {"etiqueta": "Sin turno", "valor": num(m.get("sin_capacidad"))},
-            {"etiqueta": "Turno más pedido", "valor": m.get("turno_top") or "—"},
-            {"etiqueta": "Zona más activa", "valor": m.get("barrio_top") or "—"},
+            {"etiqueta": t("Installs", "Instalaciones"), "valor": num(m.get("instalaciones"))},
+            {"etiqueta": t("Booked visits", "Visitas agendadas"), "valor": num(m.get("citas"))},
+            {"etiqueta": t("No slot", "Sin turno"), "valor": num(m.get("sin_capacidad"))},
+            {"etiqueta": t("Most requested slot", "Turno más pedido"), "valor": turnos.get(str(m.get("turno_top")), m.get("turno_top") or "—")},
+            {"etiqueta": t("Busiest area", "Zona más cargada"), "valor": m.get("barrio_top") or "—"},
         ]
     return [
-        {"etiqueta": "Comprobantes", "valor": num(m.get("comprobantes"))},
-        {"etiqueta": "Precisión de lectura", "valor": pct(m.get("precision"))},
-        {"etiqueta": "Defectos inyectados", "valor": num(m.get("defectos"))},
-        {"etiqueta": "Defectos detectados", "valor": num(m.get("detectados"))},
-        {"etiqueta": "Tasa de detección", "valor": pct(m.get("tasa_deteccion"))},
+        {"etiqueta": t("Invoices", "Comprobantes"), "valor": num(m.get("comprobantes"))},
+        {"etiqueta": t("Read precision", "Precisión de lectura"), "valor": pct(m.get("precision"))},
+        {"etiqueta": t("Injected defects", "Defectos inyectados"), "valor": num(m.get("defectos"))},
+        {"etiqueta": t("Detected defects", "Defectos detectados"), "valor": num(m.get("detectados"))},
+        {"etiqueta": t("Detection rate", "Tasa de detección"), "valor": pct(m.get("tasa_deteccion"))},
     ]
 
 
 # ------------------------------------------------------------- con la IA
+_IDIOMA_TXT = {
+    "en": "Write everything in ENGLISH.",
+    "es": "Escribí todo en ESPAÑOL.",
+}
+
+
 def informe_con_ia(llm: LLMClient, sector: str, mes: int, metricas: dict) -> dict:
     """Le pide al agente del sector que analice los números (modo agéntico).
 
     Si la IA falla, se cae al redactor LOCAL (nunca rompe).
     """
-    meta = SECTORES_POR_ID.get(sector, {"nombre": sector})
+    meta = meta_sector(sector)
+    from idioma import idioma
+    idioma_txt = _IDIOMA_TXT.get(idioma(), _IDIOMA_TXT["en"])
     mensajes = [
         {"role": "system",
-         "content": (f"Sos el agente del sector «{meta['nombre']}» de Nexus Alarm, "
-                     "una empresa ficticia de alarmas en CABA. El PROGRAMA ya calculó "
-                     "los números del mes; vos los interpretás y escribís un informe "
-                     "corto, claro y en criollo para el dueño. No inventes cifras que "
-                     "no estén en los datos.")},
+         "content": (f"You are the agent of the «{meta['nombre']}» sector of Nexus Alarm, "
+                     "a fictional alarm company in Buenos Aires (CABA). The PROGRAM already "
+                     "computed the month's numbers; you interpret them and write a short, "
+                     "clear report for the owner. Do not invent figures that are not in the "
+                     f"data. {idioma_txt}")},
         {"role": "user",
          "content": json.dumps({"sector": sector, "nombre": meta["nombre"],
                                 "mes": mes, "metricas": metricas},
@@ -272,20 +313,6 @@ def informe_con_ia(llm: LLMClient, sector: str, mes: int, metricas: dict) -> dic
         return redactor.redactar(sector, mes, metricas)
 
 
-# ------------------------------------------------------------- con Evolus
-def _redactar_con_evolus(sector: str, base: dict) -> dict:
-    """Deja que Evolus pula el documento; si no está, se queda el local."""
-    try:
-        from evolus.redactar import redactar_informe
-
-        salida = redactar_informe(base["documento"], sector=sector)
-        base["documento"] = salida["texto"]
-        base["redactor"] = salida["redactor"]
-    except Exception:  # noqa: BLE001 — Evolus es opcional
-        base["redactor"] = "local"
-    return base
-
-
 # ------------------------------------------------------------ orquestador
 def generar_informe(store: Store, llm: LLMClient | None, sector: str, mes: int, *,
                     usar_ia: bool = True, guardar: bool = True) -> dict:
@@ -300,11 +327,10 @@ def generar_informe(store: Store, llm: LLMClient | None, sector: str, mes: int, 
     else:
         base = redactor.redactar(sector, mes, metricas)
         fuente = "local"
-    base = _redactar_con_evolus(sector, base)
     informe = {
         "mes": mes,
         "sector": sector,
-        **SECTORES_POR_ID.get(sector, {"id": sector}),
+        **meta_sector(sector),
         "titulo": base["titulo"],
         "resumen": base["resumen"],
         "hallazgos": base["hallazgos"],
@@ -336,7 +362,7 @@ def sembrar_informes(store: Store, hasta_mes: int, *, forzar: bool = False) -> i
     """Precarga los informes de los meses ya corridos con el redactor LOCAL.
 
     Es lo que hace que los 6 meses del arranque tengan informe al instante:
-    sin AMD, sin Evolus, sin esperar. Devuelve cuántos informes escribió.
+    sin AMD, sin esperar. Devuelve cuántos informes escribió.
     """
     escritos = 0
     for mes in range(1, hasta_mes + 1):
@@ -364,7 +390,7 @@ def listado(store: Store, mes_actual: int) -> list[dict]:
     for s in SECTORES:
         ultimo = store.ultimo_reporte_sector(s["id"])
         salida.append({
-            **s,
+            **meta_sector(s["id"]),
             "mes_reporte": ultimo["mes"] if ultimo else None,
             "titulo": ultimo["titulo"] if ultimo else "",
             "resumen": ultimo["resumen"] if ultimo else "",
@@ -378,8 +404,7 @@ def listado(store: Store, mes_actual: int) -> list[dict]:
 
 def detalle(store: Store, sector: str, mes: int) -> dict:
     """Todo lo que muestra el panel de un sector: informe + números + historial."""
-    meta = SECTORES_POR_ID.get(sector, {"id": sector, "nombre": sector, "icono": "🗂️",
-                                        "color": "azul", "bajada": ""})
+    meta = meta_sector(sector)
     rep = store.reporte_sector(mes, sector)
     historial = [r for r in store.reportes_sector() if r["sector"] == sector]
     return {
@@ -413,8 +438,7 @@ def extras_de_sector(store: Store, sector: str, mes: int) -> dict:
 def facturas_del_mes(mes: int, limite: int = 8) -> list[dict]:
     """Comprobantes SIMULADOS del mes (deterministas) con su auditoría."""
     try:
-        from evolus.extract import evaluar_factura
-        from evolus.facturas import generar_facturas
+        from .facturas import evaluar_factura, generar_facturas
 
         lote = generar_facturas(limite, seed=1000 + mes)
         return [evaluar_factura(f) for f in lote]

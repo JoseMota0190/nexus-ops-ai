@@ -1,8 +1,8 @@
-// Un solo lugar para hablar con el backend.
+// One single place to talk to the backend.
 //
-// La URL sale de la variable VITE_API_URL. Si no está puesta, usamos
-// http://localhost:8000 y, si ese puerto está ocupado por otra cosa,
-// probamos http://127.0.0.1:8000 (mismo motor, distinto nombre).
+// The URL comes from VITE_API_URL. If it is not set, we use
+// http://localhost:8000 and, if that port is taken by something else,
+// we try http://127.0.0.1:8000 (same engine, different name).
 
 const CONFIGURADA = import.meta.env.VITE_API_URL;
 const BASES = CONFIGURADA
@@ -34,12 +34,12 @@ async function pedir(ruta, opciones = {}) {
       respuesta = await fetchBase(base, ruta, opciones);
     } catch {
       ultimoErrorDeRed = base;
-      continue; // este puerto ni contesta: probamos el siguiente
+      continue; // this port does not answer: try the next one
     }
     const tipo = respuesta.headers.get("content-type") || "";
     if (respuesta.status === 404 && !tipo.includes("application/json")) {
-      // Ese puerto contesta pero NO es el motor (p. ej. un servidor de archivos
-      // colgado en el 8000): lo descartamos y probamos el próximo candidato.
+      // That port answers but it is NOT the engine (e.g. a file server sitting
+      // on 8000): drop it and try the next candidate.
       ultimoErrorDeRed = base;
       continue;
     }
@@ -50,9 +50,9 @@ async function pedir(ruta, opciones = {}) {
 
   if (!ultimaRespuesta) {
     throw new Error(
-      "No pude conectar con el motor de la simulación. Revisá que esté corriendo " +
-        "(desde la carpeta backend: .\\.venv\\Scripts\\python.exe -m uvicorn api:app --port 8000) " +
-        `y que responda en ${ultimoErrorDeRed || BASES[0]}.`,
+      "I couldn't reach the simulation engine. Check that it is running " +
+        "(from the backend folder: .\\.venv\\Scripts\\python.exe -m uvicorn api:app --port 8000) " +
+        `and that it answers on ${ultimoErrorDeRed || BASES[0]}.`,
     );
   }
 
@@ -63,16 +63,16 @@ async function pedir(ruta, opciones = {}) {
       const cuerpoJson = await r.json();
       detalle = typeof cuerpoJson?.detail === "string" ? cuerpoJson.detail : "";
     } catch {
-      /* el backend no devolvió JSON */
+      /* the backend did not return JSON */
     }
     if (r.status >= 500) {
       throw new Error(
-        "El motor tuvo un error al procesar este pedido (no rompe nada, es un error del lado " +
-          "del servidor). Si pasa siempre, avisale a quien mantiene el backend.",
+        "The engine hit an error handling this request (nothing breaks, it is a server-side " +
+          "error). If it keeps happening, tell whoever maintains the backend.",
       );
     }
     throw new Error(
-      detalle || `El motor contestó con un problema (código ${r.status}). Probá de nuevo.`,
+      detalle || `The engine answered with a problem (code ${r.status}). Try again.`,
     );
   }
   return r.json();
@@ -84,12 +84,8 @@ function cuerpo(datos) {
 
 export const api = {
   estado: () => pedir("/api/estado"),
-  resumenes: () => pedir("/api/resumenes"),
-  llamadas: (limite = 20) => pedir(`/api/llamadas?limite=${limite}`),
   mapa: () => pedir("/api/mapa"),
   metricas: () => pedir("/api/metricas"),
-  actas: () => pedir("/api/actas"),
-  objetivos: () => pedir("/api/objetivos"),
   sectores: () => pedir("/api/sectores"),
   sectorDetalle: (id, mes) =>
     pedir(`/api/sectores/${id}${mes ? `?mes=${mes}` : ""}`),
@@ -98,17 +94,10 @@ export const api = {
       method: "POST",
       body: "{}",
     }),
-  facturacion: (mes) => pedir(`/api/facturacion${mes ? `?mes=${mes}` : ""}`),
-  evolusSalud: () => pedir("/api/evolus/salud"),
-
-  escenario: (datos) => pedir("/api/escenario", { method: "POST", body: cuerpo(datos) }),
-  llamadaEnVivo: () => pedir("/api/llamada_en_vivo", { method: "POST", body: "{}" }),
-  avanzarMes: () => pedir("/api/mes", { method: "POST", body: "{}" }),
   avanzarDia: () => pedir("/api/dia", { method: "POST", body: "{}" }),
   diaEnVivo: () => pedir("/api/dia/en-vivo", { method: "POST", body: "{}" }),
   diaEnVivoEstado: () => pedir("/api/dia/en-vivo"),
-  correrTodo: (meses = 6) => pedir(`/api/todo?meses=${meses}`, { method: "POST", body: "{}" }),
-  reiniciar: () => pedir("/api/reiniciar", { method: "POST", body: "{}" }),
   sala: (limite = 60) => pedir(`/api/sala?limite=${limite}`),
   modo: (rapido) => pedir("/api/modo", { method: "POST", body: cuerpo({ rapido }) }),
+  idioma: (lang) => pedir("/api/idioma", { method: "POST", body: cuerpo({ lang }) }),
 };

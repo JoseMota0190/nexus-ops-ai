@@ -38,6 +38,7 @@ from .gerente import (
 )
 from .leads import generar_leads
 from .sectores import generar_informes_mes
+from idioma import t
 
 NOMBRES_OPERADORES = ["Mariana Ríos", "Pablo Cabrera", "Sofía Duarte",
                       "Esteban Vega", "Carla Sosa", "Iván Ayala", "Nadia Ledesma"]
@@ -68,7 +69,7 @@ class Simulacion:
         # Interruptor "modo sala" (con charla) vs "modo rápido" (sin charla).
         self.modo_sala: bool = True
         self._sala_dia: list[dict] = []  # las charlas del día
-        # ¿Los informes de sector se generan con IA (AMD + Evolus) o con el
+        # ¿Los informes de sector se generan con IA (AMD) o con el
         # redactor local? El arranque (siembra) los hace locales, sin esperar.
         self.reportes_con_ia: bool = True
 
@@ -127,7 +128,8 @@ class Simulacion:
                                 cita.estado, cita.mensaje)
         e = self.empresa
         self.store.mensaje("whatsapp_cliente", "Nexus Alarm",
-                           f"cliente {cita.cliente_id}", cita.mensaje, e.mes, semana, dia)
+                           t(f"client {cita.cliente_id}", f"cliente {cita.cliente_id}"),
+                           cita.mensaje, e.mes, semana, dia)
         for linea in charla.lineas:
             self.store.mensaje("sala_agentes", linea["agente"], charla.cliente,
                                linea["dice"], e.mes, semana, dia)
@@ -279,8 +281,8 @@ class Simulacion:
                 c.dia, c.turno, c.estado, c.mensaje)
             # Mensaje de confirmación (tipo WhatsApp) al cliente.
             self.store.mensaje("whatsapp_cliente", "Nexus Alarm",
-                               f"cliente {c.cliente_id}", c.mensaje,
-                               e.mes, c.semana, c.dia)
+                               t(f"client {c.cliente_id}", f"cliente {c.cliente_id}"),
+                               c.mensaje, e.mes, c.semana, c.dia)
         return len(res.agendadas), res.sin_capacidad, res.turnos_negociados
 
     def _pelicula_del_dia(self, leads, res, citas) -> dict:
@@ -301,7 +303,7 @@ class Simulacion:
                 "SELECT nombre FROM clientes WHERE id = ?", (c["cliente_id"],)).fetchone()
             eventos.append({
                 "tipo": "instalacion", "minuto": minuto_turno.get(str(c["turno"]), 300),
-                "cliente": fila["nombre"] if fila else "Cliente",
+                "cliente": fila["nombre"] if fila else t("Client", "Cliente"),
                 "barrio": c["barrio"], "turno": c["turno"],
             })
 
@@ -442,8 +444,8 @@ class Simulacion:
             costos_total=costos_total, caja=round(e.caja, 2),
             clientes_activos=e.clientes_activos)
 
-        # Los 4 sectores sacan su informe del mes (IA + Evolus si están; si no,
-        # el redactor local). Nunca frena el cierre del mes.
+        # Los 4 sectores sacan su informe del mes (IA si está; si no, el
+        # redactor local). Nunca frena el cierre del mes.
         try:
             generar_informes_mes(self.store, self.llm, mes,
                                  usar_ia=self.reportes_con_ia)

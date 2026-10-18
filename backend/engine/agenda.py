@@ -17,7 +17,10 @@ from dataclasses import dataclass, field
 
 from .business import DIAS_POR_SEMANA, DIAS_SEMANA, MAX_INTENTOS_TURNO, PROB_NO_PUEDE, \
     TURNO_HORA, TURNOS_DIA, capacidad_tecnico_dia, turnos_de_capacidad
+from idioma import t
 from .zones import ZONAS, distancia_aprox, zona_por_nombre
+
+_DIAS_SEMANA_ES = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado")
 
 _TECNICOS_NOMBRES = [
     "Nicolás Ferreyra", "Ezequiel Roldán", "Santiago Paz", "Gonzalo Quiroga",
@@ -57,9 +60,14 @@ def nombres_tecnicos(n: int, desde: int = 0) -> list[str]:
 
 def _turno_mensaje(barrio: str, dia: int, turno: str) -> str:
     hora = TURNO_HORA[turno]
-    return (f"¡Hola! Te confirmo la instalación de tu alarma en {barrio} el "
-            f"{DIAS_SEMANA[dia]} a las {hora}. El técnico te avisa al llegar. "
-            "Gracias por confiar en Nexus Alarm.")
+    dia_txt = t(DIAS_SEMANA[dia], _DIAS_SEMANA_ES[dia])
+    return t(
+        f"Hi! I confirm the installation of your alarm in {barrio} on "
+        f"{dia_txt} at {hora}. The technician will let you know when they arrive. "
+        "Thanks for trusting Nexus Alarm.",
+        f"¡Hola! Confirmo la instalación de tu alarma en {barrio} el "
+        f"{dia_txt} a las {hora}. El técnico te avisa cuando llega. "
+        "¡Gracias por confiar en Nexus Alarm!")
 
 
 def _puntaje_turno(zona_tecnico, barrio: str) -> float:

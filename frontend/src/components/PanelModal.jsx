@@ -1,9 +1,10 @@
 import { useEffect, useRef } from "react";
-import { META_PANELES } from "./MenuLateral.jsx";
+import { metaPaneles } from "./MenuLateral.jsx";
+import { t } from "../i18n.js";
 
 /**
- * La caja que se superpone sobre el mapa. Apretar la X o el fondo de atrás
- * la cierra y volvés al mapa sin haber perdido de vista.
+ * The box that sits on top of the map. Pressing the X or the backdrop behind
+ * it closes it and takes you back to the map without losing sight of it.
  */
 export default function PanelModal({ panel, onCerrar, children }) {
   const caja = useRef(null);
@@ -14,13 +15,13 @@ export default function PanelModal({ panel, onCerrar, children }) {
       if (e.key === "Escape") onCerrar();
     };
     window.addEventListener("keydown", tecla);
-    // Devuelve el foco a la caja para que Escape funcione siempre.
+    // Give focus back to the box so Escape always works.
     caja.current?.focus();
     return () => window.removeEventListener("keydown", tecla);
   }, [panel, onCerrar]);
 
   if (!panel) return null;
-  const meta = META_PANELES.find((p) => p.id === panel) ?? { icono: "📄", titulo: panel };
+  const meta = metaPaneles().find((p) => p.id === panel) ?? { icono: "📄", titulo: panel };
 
   return (
     <>
@@ -36,7 +37,8 @@ export default function PanelModal({ panel, onCerrar, children }) {
           <h2 className="modal-titulo">
             <span className="icono">{meta.icono}</span> {meta.titulo}
           </h2>
-          <button className="menu-x" onClick={onCerrar} aria-label="Cerrar el panel">
+          <button className="menu-x" onClick={onCerrar}
+                  aria-label={t("Close the panel", "Cerrar el panel")}>
             ✕
           </button>
         </div>

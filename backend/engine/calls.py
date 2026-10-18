@@ -17,23 +17,29 @@ import random
 from dataclasses import dataclass, field
 
 from .business import COSTO_POR_LEAD, LLAMADAS_POR_OPERADOR_DIA, Producto, elegir_kit
+from idioma import t
 from .leads import Lead
 
 # Motivos por los que no atienden (se descarta al primero, no se reintenta).
-MOTIVOS_NO_RESPUESTA = [
-    ("No contestó", 0.62),
-    ("Buzón de voz", 0.23),
-    ("Cortó la llamada", 0.15),
+# Cada motivo lleva su texto en los dos idiomas: (inglés, español).
+_MOTIVOS_NO_RESPUESTA = [
+    (("No answer", "No atendió"), 0.62),
+    (("Voicemail", "Buzón de voz"), 0.23),
+    (("Hung up", "Cortó"), 0.15),
 ]
 
 # Motivos por los que atendieron y no compraron (lista fija, decisión del autor).
-MOTIVOS_NO_COMPRA = [
-    ("Muy caro para mí", 0.30),
-    ("Ya tiene otra empresa de seguridad", 0.22),
-    ("No le interesa tener alarma", 0.25),
-    ("No es el momento / lo piensa", 0.15),
-    ("Quiere consultar con la familia", 0.08),
+_MOTIVOS_NO_COMPRA = [
+    (("Too expensive for me", "Muy caro para mí"), 0.30),
+    (("Already has another security company", "Ya tiene otra empresa de seguridad"), 0.22),
+    (("Not interested in an alarm", "No le interesa una alarma"), 0.25),
+    (("Not the right time / thinking about it", "No es el momento / lo está pensando"), 0.15),
+    (("Wants to ask the family", "Quiere consultar en familia"), 0.08),
 ]
+
+# Lista canónica (inglés) por compatibilidad con quien la importe.
+MOTIVOS_NO_COMPRA = [n[0] for n, _ in _MOTIVOS_NO_COMPRA]
+MOTIVOS_NO_RESPUESTA = [n[0] for n, _ in _MOTIVOS_NO_RESPUESTA]
 
 
 @dataclass
@@ -76,8 +82,10 @@ class DiaLlamadas:
         return self.ventas / self.atendidas if self.atendidas else 0.0
 
 
-def _elegir(pares: list[tuple[str, float]], rng: random.Random) -> str:
-    return rng.choices([n for n, _ in pares], weights=[p for _, p in pares], k=1)[0]
+def _elegir(pares: list[tuple[tuple[str, str], float]], rng: random.Random) -> str:
+    """Elige un motivo por probabilidad y lo devuelve en el idioma activo."""
+    nombres = [t(*n) for n, _ in pares]
+    return rng.choices(nombres, weights=[p for _, p in pares], k=1)[0]
 
 
 def llamadas_planificadas(operadores: int, rng: random.Random) -> int:
@@ -106,7 +114,7 @@ def simular_dia_de_llamadas(leads_del_dia: list[Lead], empresa, rng: random.Rand
         op = operadores[i % len(operadores)] if operadores else 1
         if rng.random() >= tasa_respuesta:
             # No atendieron: se descarta al primer intento (decisión del autor).
-            motivo = _elegir(MOTIVOS_NO_RESPUESTA, rng)
+            motivo = _elegir(_MOTIVOS_NO_RESPUESTA, rng)
             res.motivos_no_respuesta[motivo] = res.motivos_no_respuesta.get(motivo, 0) + 1
             res.estados.append("perdido")
             res.motivos.append(motivo)
@@ -115,7 +123,7 @@ def simular_dia_de_llamadas(leads_del_dia: list[Lead], empresa, rng: random.Rand
 
         res.atendidas += 1
         if rng.random() >= tasa_cierre:
-            motivo = _elegir(MOTIVOS_NO_COMPRA, rng)
+            motivo = _elegir(_MOTIVOS_NO_COMPRA, rng)
             res.motivos_no_compra[motivo] = res.motivos_no_compra.get(motivo, 0) + 1
             res.estados.append("no_compra")
             res.motivos.append(motivo)
@@ -131,7 +139,7 @@ def simular_dia_de_llamadas(leads_del_dia: list[Lead], empresa, rng: random.Rand
         precio_accesorio = Producto.precio(accesorio) if accesorio else 0.0
         res.ventas += 1
         res.estados.append("vendido")
-        res.motivos.append("Cerró la venta")
+        res.motivos.append(t("Closed the sale", "Cerró la venta"))
         res.operadores.append(op)
         res.ventas_lista.append(VentaGenerada(
             lead=lead,

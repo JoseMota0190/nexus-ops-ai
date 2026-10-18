@@ -1,214 +1,232 @@
-# nexus-ops-ai — Gemelo Digital de Nexus Alarm
+# nexus-ops-ai — Nexus Alarm Digital Twin
 
-Gemelo digital de una empresa ficticia de instalación de alarmas en Ciudad de Buenos Aires (CABA).
-Un enjambre de agentes IA opera el proceso comercial completo — lead → teleoperador → agenda →
-reparto de técnicos → contrato → comprobante — y el dueño ve KPIs en vivo, prueba escenarios
-"qué pasa si" y corre los 9 meses del plan.
+A digital twin of a fictional home-alarm installation company in Buenos Aires (CABA).
+A swarm of AI agents runs the whole sales process — lead → telemarketer → scheduling →
+technician dispatch → invoice — while the owner watches live KPIs, tries "what-if"
+scenarios and runs the 9 months of the plan.
 
-**Cerebro del sistema: modelo abierto servido sobre infraestructura AMD** (AMD Radeon
-Cloud / instancia GPU propia con Gemma + vLLM). La inferencia de los agentes corre en AMD.
-**Redactor de los informes: Evolus.**
+**The system's brain: an open model served on AMD infrastructure** (AMD Radeon
+Cloud / a GPU instance running Gemma + vLLM). The agents' inference runs on AMD.
 
-> **Proyecto de hackathon (AMD Developer Hackathon: ACT III / lablab.ai · track Reinvent Commerce).**
-> Todos los números, empresas, llamadas y comprobantes son **SIMULADOS**. No constituyen
-> asesoramiento, facturación real ni afirmaciones fiscales. Los comprobantes llevan
-> "SIMULADO – SIN VALIDEZ FISCAL". La línea base de comparación es una **estimación**.
+> **Hackathon project (AMD Developer Hackathon: ACT III / lablab.ai · Reinvent Commerce track).**
+> Every number, company, call and invoice is **SIMULATED**. Nothing here is advice, real
+> billing or a tax claim. Invoices carry "SIMULATED – NO FISCAL VALIDITY". The comparison
+> baseline is an **estimate**.
 
 ---
 
-## La historia que cuenta
+## The story it tells
 
-Nexus Alarm arranca con **3 teleoperadores y 2 técnicos**: 150 llamadas/día (50 por operador),
-~6 ventas al día, que se agendan para la **semana siguiente** de lunes a sábados.
+Nexus Alarm starts with **3 telemarketers and 2 technicians**: 150 calls/day (50 per
+operator), ~6 sales a day, booked for the **following week**, Monday to Saturday.
 
-Un **Gerente IA** se reúne cada mes, mira los números, mueve sus tres palancas
-(contratar operadores · contratar técnicos · mejorar la conversión de la base de datos)
-y decide cuánto crecer. El **programa valida** cada decisión contra las reglas del negocio
-(caja, tope de contratación, capacidad) y si el plan queda corto, una **red de seguridad**
-lo avisa y lo corrige **en forma transparente** — queda escrito en el acta.
+An **AI Manager** meets every month, looks at the numbers, moves its three levers
+(hire operators · hire technicians · improve database conversion) and decides how much
+to grow. The **program validates** every decision against the business rules (cash,
+hiring cap, capacity) and, if the plan falls short, a **safety net** flags it and fixes
+it **transparently** — it is written into the minutes.
 
-Resultado de la simulación de 9 meses:
+Result of the 9-month simulation:
 
-| | mes 1 | mes 9 | |
+| | month 1 | month 9 | |
 |---|---:|---:|---:|
-| Ventas/día | 6.8 | 30.5 | **×4.5** |
-| Teleoperadores | 3 | 8 | ×2.7 |
-| Técnicos | 2 | **10** | meta alcanzada |
-| Ingresos/mes | 38.6 k | 313 k | ×8.1 |
-| Costos/mes | 9.1 k | 24.4 k | ×2.7 |
+| Sales/day | 6.8 | 30.5 | **×4.5** |
+| Telemarketers | 3 | 8 | ×2.7 |
+| Technicians | 2 | **10** | goal reached |
+| Revenue/month | 38.6 k | 313 k | ×8.1 |
+| Costs/month | 9.1 k | 24.4 k | ×2.7 |
 
-**Los costos crecen más lento que las ventas** (×2.7 vs ×5.9 en ingresos por instalación):
-la pregunta del pitch es *"¿cómo vendo 5× más sin poner 5× más operadores?"* — la respuesta es
-que el Gerente mejora la conversión además de contratar.
+**Costs grow slower than sales** (×2.7 vs ×5.9 in revenue per install): the
+question of the pitch is *"how do I sell 5× more without putting 5× more operators?"* —
+the answer is that the Manager improves conversion as well as hiring.
 
 ---
 
-## Los 4 sectores (el menú ☰)
+## The 4 sectors (the ☰ menu)
 
-El menú ya no es una lista de tableros sueltos: son **4 sectores**, y cada uno **rinde
-cuentas solo**. Al cerrar cada mes, el sector **calcula sus números** con el programa, la
-**IA de AMD los analiza**, **Evolus redacta el documento** y, si Evolus está apagado o falla,
-redacta un **respaldo local**. El informe queda guardado y se puede volver a generar con un clic.
+The menu is no longer a list of loose dashboards: it is **4 sectors**, and each one
+**reports on itself**. When each month closes, the sector **computes its numbers** with
+the program, the **AMD AI analyzes them**, and a **local writer** drafts the document
+(no internet, no credits, so the demo never runs out of a report). The report is saved
+and can be regenerated with one click.
 
-| Sector | Qué mira | Color |
+| Sector | What it watches | Color |
 |---|---|---|
-| 🧾 **Gerencia** | caja, ingresos, costos, técnicos, decisión del mes | azul |
-| 📞 **Ventas** | llamadas, atención, conversión, motivos de fallo | verde |
-| 📅 **Agenda y técnicos** | ventas agendadas, instalaciones, turnos, ocupación | violeta |
-| 🧮 **Facturación** | comprobantes simulados, precisión del extractor, defectos | cyan |
+| 🧾 **Management** | cash, revenue, costs, technicians, the month's decision | blue |
+| 📞 **Sales** | calls, answer rate, conversion, reasons for failure | green |
+| 📅 **Scheduling & technicians** | bookings, installs, slots, occupancy | violet |
+| 🧮 **Billing** | simulated invoices, reader precision, defects | cyan |
 
-Los **6 meses precargados** se siembran al instante con el redactor local (sin gastar
-créditos ni tocar la red); los meses que corrés en vivo usan la IA y Evolus si están prendidos.
+The **6 preloaded months** are seeded instantly with the local writer (no credits, no
+network); the months you run live use the AMD AI.
 
-**Transparencia:** cada informe muestra de dónde salió (`🧠 Analizó la IA (AMD)` /
-`📝 Redactor local` · `✍️ Redactó Evolus` / `✍️ Redacción local`) y su semáforo 🟢🟡🔴.
+**Transparency:** each report shows where it came from (`🧠 Analyzed by the AI (AMD)` /
+`📝 Local writer` · `✍️ Written locally`) and its traffic light 🟢🟡🔴.
 
 ---
 
-## Cómo correrlo
+## Bilingual (ES / EN)
 
-### Opción A — Docker (un solo comando) ✅ recomendado
+**English is the base language.** The **EN / ES** button in the top strip flips the
+**whole site** — interface, month labels, sector reports, agent dialogues and the
+invoice seal — from English to Spanish and back.
+
+Under the hood the backend keeps **one database per language** (`data/nexus.db` for
+English, `data/nexus_es.db` for Spanish), each seeded with the same 6 months. Pressing
+the button calls `POST /api/idioma`, which switches the engine's language and swaps the
+database in one step; switching never interrupts a live day (it answers `409` while a
+day is running). Every string lives in **one place per side**: `backend/idioma.py`
+(`t("English", "español")`) and `frontend/src/i18n.js` (`t("English", "español")`).
+
+---
+
+## How to run it
+
+### Option A — Docker (a single command) ✅ recommended
 
 ```bash
 docker compose up --build
 ```
 
-- **Pantalla del dueño:** http://localhost:8080
-- **API del backend:** http://localhost:8000/api/estado
+- **Owner's screen:** http://localhost:8080
+- **Backend API:** http://localhost:8000/api/estado
 
-Arranca en **modo mock** por defecto (no gasta créditos AMD). Para usar el cerebro de
-AMD de verdad: copiá `.env.example` a `.env`, poné `USE_MOCK=false` y completá
-`LLM_API_KEY` y `LLM_MODEL` (el endpoint de Radeon Cloud ya viene puesto), y volvé a
-correr `docker compose up --build`.
+It starts in **mock mode** by default (no AMD credits spent). To use the real AMD brain:
+copy `.env.example` to `.env`, set `USE_MOCK=false` and fill in `LLM_API_KEY` and
+`LLM_MODEL` (the Radeon Cloud endpoint is already set), then run
+`docker compose up --build` again.
 
-La base de datos SQLite vive en el volumen Docker `nexus_data` → **sobrevive a los reinicios**.
-Para borrar todo y empezar de cero: `docker compose down -v`.
+The SQLite database lives in the Docker volume `nexus_data` → **it survives restarts**.
+To wipe everything and start over: `docker compose down -v`.
 
-Si el puerto 8000 u 8080 están ocupados en tu máquina:
+If ports 8000 or 8080 are taken on your machine:
 `BACKEND_PORT=8010 FRONTEND_PORT=8081 docker compose up --build`.
 
-### Opción B — Sin Docker (desarrollo, Windows)
+### Option B — No Docker (development, Windows)
 
 ```powershell
-# Backend (usa el venv ya creado, sin activarlo)
+# Backend (uses the venv already created, without activating it)
 cd backend
-.venv\Scripts\pip install -r requirements.txt   # primera vez
+.venv\Scripts\pip install -r requirements.txt   # first time
 .venv\Scripts\python.exe -m uvicorn api:app --reload
 
-# Frontend (en otra ventana)
+# Frontend (in another window)
 cd frontend
 npm install
 npm run dev
 ```
 
-O de una: doble clic en **`scripts\dev.cmd`** (abre backend + frontend en dos ventanas).
-En PowerShell: `powershell -ExecutionPolicy Bypass -File scripts\dev.ps1`.
+Or in one go: double-click **`scripts\dev.cmd`** (opens backend + frontend in two windows).
 
-Con `USE_MOCK=true` todo el flujo funciona sin llamar a ningún modelo real.
+With `USE_MOCK=true` the whole flow works without calling any real model.
 
-### Pruebas
+### Tests
 
 ```powershell
 cd backend
-# 103 tests en total (motor, LLM, API, enjambre de agentes, Evolus) — corren sin red
+# 77 tests in total (engine, LLM, API, agent swarm, invoice auditor) — they run without network
 .venv\Scripts\python.exe -m pytest tests -q
-.venv\Scripts\python.exe tests\mirar_negocio.py # tablero de los 9 meses
+.venv\Scripts\python.exe tests\mirar_negocio.py # the 9-month dashboard
 
 cd ..\frontend
-npm run build     # compila
-npm run smoke     # 45 checks: render + placa contra el backend real
+npm run build     # compiles
+npm run smoke     # 46 checks: render + screen + ES/EN switch, against the real backend
 ```
 
 ---
 
-## Publicar (Render + Netlify)
+## Publishing (Render + Netlify)
 
-- **Backend → Render:** el archivo `render.yaml` es un Blueprint. En
-  [app.onrender.com](https://app.onrender.com) → *New* → *Blueprint* → elegir el repo.
-  Render arma el servicio solo (Python, `uvicorn api:app`, chequeo de salud en `/api/estado`).
-- **Frontend → Netlify:** en [app.netlify.com](https://app.netlify.com) → *Add new site* →
-  importar el repo con *base directory* `frontend`. Netlify lee `frontend/netlify.toml`
-  (build `npm run build`, publica `dist`, redirige `/api/*` al backend de Render).
-  **Hay que editar la URL del backend adentro de `netlify.toml`** (está marcada con ⬇).
-- Los secretos (`LLM_API_KEY`, `LLM_MODEL`) se cargan en el panel de Render. **Nunca** se
-  commitean.
+- **Backend → Render:** the `render.yaml` file is a Blueprint. In
+  [app.onrender.com](https://app.onrender.com) → *New* → *Blueprint* → pick the repo.
+  Render builds the service on its own (Python, `uvicorn api:app`, health check on `/api/estado`).
+- **Frontend → Netlify:** in [app.netlify.com](https://app.netlify.com) → *Add new site* →
+  import the repo with *base directory* `frontend`. Netlify reads `frontend/netlify.toml`
+  (build `npm run build`, publishes `dist`, redirects `/api/*` to the Render backend).
+  **Edit the backend URL inside `netlify.toml`** (marked with ⬇).
+- Secrets (`LLM_API_KEY`, `LLM_MODEL`) are set in the Render panel. They are **never**
+  committed.
 
-## Variables de entorno
+## Environment variables
 
-Ver `.env.example`. Los secretos **nunca** se commitean.
+See `.env.example`. Secrets are **never** committed.
 
 ---
 
-## Arquitectura
+## Architecture
 
 ```
-Motor de eventos (determinista, SIN LLM)
-  reloj x120 · leads 180/día (suben con las mejoras de base de datos)
-  150 llamadas/día · agenda semanal (lun–sáb, turnos 9/12/16) · Monte Carlo
-  reparto de técnicos por algoritmo (costo de traslado por barrio)
-  validador del Gerente + red de seguridad transparente
-  todo persistido en SQLite (backend/data/nexus.db)
+Event engine (deterministic, NO LLM)
+  clock x120 · leads 180/day (they grow with database improvements)
+  150 calls/day · weekly scheduling (Mon–Sat, slots 9/12/16) · Monte Carlo
+  technician dispatch by algorithm (travel cost per neighborhood)
+  Manager validator + transparent safety net
+  everything persisted in SQLite (one database per language)
         │
-        ├── Teleoperador  (LLM AMD)  califica, agenda y anota el motivo de fallo
-        ├── Coordinador de agenda     negocia turno por mensaje y confirma al cliente
-        ├── Gerente IA               reunión mensual: métricas → decisión → acta
-        └── 4 SECTORES (cierre de mes)
-              programa calcula → IA de AMD analiza → Evolus redacta → respaldo local
-              informes guardados en SQLite (reportes_sector)
+        ├── Telemarketer   (LLM AMD)  qualifies, books and logs the reason for failure
+        ├── Scheduling coordinator    negotiates a slot by message and confirms to the client
+        ├── AI Manager                monthly meeting: metrics → decision → minutes
+        └── 4 SECTORS (month close)
+              program computes → AMD AI analyzes → local writer drafts
+              reports saved in SQLite (reportes_sector)
         │
-  Pantalla del dueño: mapa CABA + logo · pie de simulación + Sala de agentes +
-  franja AMD siempre visible · menú ☰ con los 4 sectores
+  Owner's screen: CABA map + logo · simulation footer + agent room +
+  AMD strip always visible · ☰ menu with the 4 sectors
 ```
 
-**Regla del actor:** el programa calcula las ~40.000 llamadas de los 9 meses; la IA
-"actúa" solo en las ~20-30 llamadas y chats que se muestran en vivo. Así la demo es
-rápida, barata y determinista, y aun así los agentes hablan de verdad.
+**Actor rule:** the program computes the ~40,000 calls of the 9 months; the AI
+"acts" only in the ~20-30 calls and chats shown live. That way the demo is fast, cheap
+and deterministic — and the agents still really talk.
 
-### Agentes y quién decide
+### Agents and who decides
 
-| Personaje | Habla (IA) | Decide (programa) |
+| Character | Talks (AI) | Decides (program) |
 |---|---|---|
-| Teleoperador | ✅ califica y anota el motivo | probabilidad de cierre |
-| Coordinador agenda | ✅ negocia turno | turnos libres y vecindad |
-| Coordinador técnicos | explica | ✅ reparto por algoritmo |
-| Gerente | ✅ analiza y aconseja | ✅ valida caja, tope y capacidad |
+| Telemarketer | ✅ qualifies and logs the reason | closing probability |
+| Scheduling coordinator | ✅ negotiates the slot | free slots and proximity |
+| Technician coordinator | explains | ✅ dispatch by algorithm |
+| Manager | ✅ analyzes and advises | ✅ validates cash, cap and capacity |
 
-### Reglas locales simuladas
+### Simulated local rules
 
-- Cada comprobante lleva **"SIMULADO – SIN VALIDEZ FISCAL"** (sello ARCA simulado).
-- Evolus (extractor de documentos + workflow de contratos) es un módulo **aislado**.
-- **Todas** las llamadas entran por leads de la web que piden ser llamados: no hay llamada en frío.
+- Every invoice carries **"SIMULATED – NO FISCAL VALIDITY"** (simulated ARCA seal).
+- The invoice **auditor** is rule-based (Monte Carlo + rule detection): the LLM is never the
+  only method of calculation.
+- **All** calls come from website leads asking to be called: there is no cold calling.
 
 ---
 
-## Estructura del repo
+## Repository structure
 
 ```
 backend/
-  api.py            FastAPI: estado, resumenes, escenarios, mapa, métricas AMD, sectores...
-  store.py          SQLite (clientes, leads, llamadas, citas, decisiones, actas, informes)
+  api.py            FastAPI: status, summaries, scenarios, map, AMD metrics, sectors, language
+  idioma.py         the site's language (English by default, Spanish on demand)
+  store.py          SQLite (clients, leads, calls, appointments, decisions, minutes, reports)
   engine/           business · leads · calls · agenda · technicians · gerente · simulation
-                    sectores (informes de los 4 sectores) · redactor (respaldo local)
+                    sectores (reports of the 4 sectors) · redactor (local writer) · facturas (auditor)
   llm/              client (OpenAI-compatible) · mock · cache · metrics
-  evolus/           módulo aislado: extractor de documentos + workflow + redacción
-  schemas/          respuestas estructuradas de cada agente (Pydantic)
-  tests/            103 tests + mirador de negocio
-frontend/           React + Vite: mapa CABA + pie de simulación + 4 sectores
-scripts/dev.cmd     levanta backend + frontend en dos ventanas
-docker-compose.yml  backend + frontend de un solo comando
-render.yaml         Blueprint de Render
+  schemas/          structured responses of each agent (Pydantic)
+  tests/            77 tests + business inspector
+frontend/           React + Vite: CABA map + simulation footer + 4 sectors + ES/EN switch
+scripts/dev.cmd     starts backend + frontend in two windows
+docker-compose.yml  backend + frontend in a single command
+render.yaml         Render Blueprint
 ```
 
-## Reglas del proyecto
+## Project rules
 
-- **Salidas estructuradas:** cada agente devuelve JSON validado con Pydantic
-  (máx. 2 reintentos + fallback en modo mock).
-- **Un único cliente LLM** compatible con OpenAI (`base_url` configurable) → Radeon Cloud / Gemma sobre GPU de AMD.
-- **Evolus** redacta los informes de sector (con respaldo local si está apagado o falla).
-- **Modo mock y caché/replay** para reproducir la demo sin red.
-- **Métricas por llamada** (latencia p50/p95, tokens, tokens/s) expuestas en el panel AMD.
-- **Monte Carlo** y estadística para el pronóstico — el LLM nunca es el único método de cálculo.
+- **Structured outputs:** every agent returns JSON validated with Pydantic
+  (max. 2 retries + mock-mode fallback).
+- **A single LLM client** compatible with OpenAI (`base_url` configurable) → Radeon Cloud / Gemma on AMD GPU.
+- **Local writer** drafts the sector reports (no external service needed).
+- **Bilingual by design:** every user-facing string is a pair `t("English", "español")`
+  (`backend/idioma.py` + `frontend/src/i18n.js`); the ES/EN button flips interface,
+  reports, agent dialogues and invoices, with one database per language.
+- **Mock mode and cache/replay** to reproduce the demo without network.
+- **Per-call metrics** (latency p50/p95, tokens, tokens/s) shown in the AMD strip.
+- **Monte Carlo** and statistics for forecasting — the LLM is never the only calculation method.
 
-## Licencia
+## License
 
-MIT. Ver `LICENSE`.
+MIT. See `LICENSE`.

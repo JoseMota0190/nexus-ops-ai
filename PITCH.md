@@ -33,7 +33,7 @@
 | 3 | 0:26 – 0:56 | Pantalla: el enjambre de agentes (llamada + agenda) |
 | 4 | 0:56 – 1:30 | Pantalla: el Gerente IA y su red de seguridad |
 | 5 | 1:30 – 2:05 | Slide/tabla: los números de los 9 meses |
-| 6 | 2:05 – 2:28 | Pantalla: franja AMD + los 4 sectores (informe, Evolus) |
+| 6 | 2:05 – 2:28 | Pantalla: franja AMD + los 4 sectores (informes) |
 | 7 | 2:28 – 2:50 | Slide de cierre |
 
 ---
@@ -165,15 +165,15 @@ el aviso de la red de seguridad, **señalarlo con el mouse** (es una virtud, no 
 ## ESCENA 6 — AMD + los 4 sectores (2:05 – 2:28)
 
 **Pantalla:** la **franja AMD** abajo (siempre visible: modelo, p50/p95, tokens/s, respaldos)
-y un **informe de sector** abierto, con las etiquetas `🧠 Analizó la IA (AMD)` y
-`✍️ Redactó Evolus`.
+y un **informe de sector** abierto, con las etiquetas `🧠 Analyzed by the AI (AMD)` y
+`✍️ Written locally`.
 
 **Voz:**
 > The brain runs on an open model served on AMD infrastructure.
 > A strip at the bottom shows every call measured — latency, tokens per second, fallbacks — live.
 > And the whole business reports to four sectors: management, sales, scheduling and billing.
 > Each month the program computes the numbers, AMD's model analyzes them,
-> and Evolus writes the report — with a local writer as a safety net.
+> and the report is written into a document — with a local writer as a safety net.
 > And the forecast itself is Monte Carlo, not the language model:
 > the model talks, the math decides.
 
@@ -184,7 +184,7 @@ y un **informe de sector** abierto, con las etiquetas `🧠 Analizó la IA (AMD)
 4. `And the whole business reports to four sectors:`
 5. `management, sales, scheduling and billing.`
 6. `Each month the program computes the numbers,`
-7. `AMD's model analyzes them, and Evolus writes the report —`
+7. `AMD's model analyzes them, and the report is written —`
 8. `with a local writer as a safety net.`
 9. `And the forecast itself is Monte Carlo,`
 10. `not the language model:`
@@ -239,7 +239,7 @@ y abajo: *Open source · Containerized · Live* + logo AMD.
 > alone. Rejection reasons from every call are logged and fed back to the
 > manager's monthly review. The business reports to four sectors — management,
 > sales, scheduling and billing — and every month the numbers are computed, the
-> model analyzes them, and Evolus writes the report (with a local writer as
+> model analyzes them, and the report is written (with a local writer as
 > fallback). That is how customer data becomes a recommendation and a
 > recommendation becomes an action.
 >

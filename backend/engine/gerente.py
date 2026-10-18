@@ -26,6 +26,7 @@ from store import Store
 from schemas import DecisionGerente, ReunionGerente
 
 from .agenda import nombres_para_alta
+from idioma import t
 from .business import (
     COSTO_POR_MEJORA as _COSTO_MEJORA,
     DIAS_POR_SEMANA,
@@ -114,16 +115,21 @@ def tope_tecnicos(store, mes: int) -> int:
 def validar_decision(d: DecisionGerente, empresa: Empresa, caja: float,
                      mes: int, tope: int | None = None) -> Veredicto:
     if d.cantidad <= 0:
-        return Veredicto(False, "El Gerente no propuso ninguna acción concreta.")
+        return Veredicto(False, t("The Manager did not propose any concrete action.",
+                                  "El Gerente no propuso ninguna acción concreta."))
 
     if d.palanca.value == "contratar_operadores":
         n = empresa.operadores + d.cantidad
         if n > MAX_OPERADORES:
-            return Veredicto(False, f"No podemos pasar de {MAX_OPERADORES} operadores.")
+            return Veredicto(False, t(f"We can't go past {MAX_OPERADORES} operators.",
+                                      f"No podemos pasar de {MAX_OPERADORES} operadores."))
         costo = d.cantidad * SALARIO_OPERADOR_MES
         if caja < costo:
-            return Veredicto(False, f"La caja no llega: hacen falta USD {costo:,.0f} y hay USD {caja:,.0f}.")
-        return Veredicto(True, f"{d.cantidad} operador(es) por USD {costo:,.0f}/mes.")
+            return Veredicto(False, t(
+                f"Cash is short: USD {costo:,.0f} needed and USD {caja:,.0f} available.",
+                f"La caja no alcanza: hacen falta USD {costo:,.0f} y hay USD {caja:,.0f}."))
+        return Veredicto(True, t(f"{d.cantidad} operator(s) for USD {costo:,.0f}/month.",
+                                 f"{d.cantidad} operador(es) por USD {costo:,.0f}/mes."))
 
     if d.palanca.value == "contratar_tecnicos":
         n = empresa.tecnicos + d.cantidad
@@ -131,26 +137,36 @@ def validar_decision(d: DecisionGerente, empresa: Empresa, caja: float,
         if n > limite:
             return Veredicto(
                 False,
-                f"La venta todavía no justifica tantas manos: este mes el tope es {limite} técnicos.")
+                t(f"Sales don't yet justify that many hands: this month the cap is {limite} technicians.",
+                  f"Las ventas todavía no justifican tantas manos: este mes el tope es {limite} técnicos."))
         costo = d.cantidad * SALARIO_TECNICO_MES
         if caja < costo:
-            return Veredicto(False, f"La caja no llega: hacen falta USD {costo:,.0f} y hay USD {caja:,.0f}.")
-        return Veredicto(True, f"{d.cantidad} técnico(s) por USD {costo:,.0f}/mes.")
+            return Veredicto(False, t(
+                f"Cash is short: USD {costo:,.0f} needed and USD {caja:,.0f} available.",
+                f"La caja no alcanza: hacen falta USD {costo:,.0f} y hay USD {caja:,.0f}."))
+        return Veredicto(True, t(f"{d.cantidad} technician(s) for USD {costo:,.0f}/month.",
+                                 f"{d.cantidad} técnico(s) por USD {costo:,.0f}/mes."))
 
     if d.palanca.value == "mejorar_conversion":
         if empresa.mejoras + d.cantidad > MAX_MEJORAS:
-            return Veredicto(False, f"La base de datos ya está al máximo de {MAX_MEJORAS} mejoras.")
+            return Veredicto(False, t(
+                f"The database is already at the maximum of {MAX_MEJORAS} improvements.",
+                f"La base ya está en el máximo de {MAX_MEJORAS} mejoras."))
         costo = d.cantidad * _COSTO_MEJORA
         if caja < costo:
-            return Veredicto(False, f"La caja no llega: hacen falta USD {costo:,.0f} y hay USD {caja:,.0f}.")
-        return Veredicto(True, f"Inversión de USD {costo:,.0f} en base de datos y servicio.")
+            return Veredicto(False, t(
+                f"Cash is short: USD {costo:,.0f} needed and USD {caja:,.0f} available.",
+                f"La caja no alcanza: hacen falta USD {costo:,.0f} y hay USD {caja:,.0f}."))
+        return Veredicto(True, t(f"Investment of USD {costo:,.0f} in database and service.",
+                                 f"Inversión de USD {costo:,.0f} en base y servicio."))
 
-    return Veredicto(False, "Palanca desconocida.")
+    return Veredicto(False, t("Unknown lever.", "Palanca desconocida."))
 
 
 def _alta_operadores(empresa: Empresa, store: Store, n: int, caja: float) -> float:
     empresa.operadores += n
-    nombres = [f"Operador {empresa.operadores - n + i + 1}" for i in range(n)]
+    nombres = [t(f"Operator {empresa.operadores - n + i + 1}",
+                 f"Operador {empresa.operadores - n + i + 1}") for i in range(n)]
     store.alta_operadores(n, nombres)
     return caja - n * SALARIO_OPERADOR_MES
 
@@ -184,15 +200,23 @@ def _que_falta(empresa: Empresa, mes: int, store=None) -> tuple[str, str]:
 
     if potencia < objetivo_ventas:
         return ("falta_ventas",
-                f"Hoy podés hacer {potencia:.0f} ventas/día y hacen falta {objetivo_ventas:.0f}. "
-                "Contratá operadores o mejorá la conversión.")
+                t(f"Today you can do {potencia:.0f} sales/day and {objetivo_ventas:.0f} are needed. "
+                  "Hire operators or improve conversion.",
+                  f"Hoy se pueden hacer {potencia:.0f} ventas/día y hacen falta {objetivo_ventas:.0f}. "
+                  "Contratar operadores o mejorar la conversión."))
     if empresa.tecnicos < objetivo_tecnicos or atraso > 0:
-        detalle = (f" la venta alcanza pero hay {atraso} instalaciones sin turno" if atraso > 0
-                   else " la venta alcanza")
+        if atraso > 0:
+            detalle = t(f" sales are enough but there are {atraso} installs without a slot",
+                        f" las ventas alcanzan pero hay {atraso} instalaciones sin turno")
+        else:
+            detalle = t(" sales are enough", " las ventas alcanzan")
         return ("falta_tecnicos",
-                f"{detalle.strip().capitalize()}: hay {empresa.tecnicos} técnicos y hacen falta "
-                f"{objetivo_tecnicos} para las {objetivo_ventas:.0f} ventas/día.")
-    return ("mantener", "Vas bien: este mes no hace falta forzar nada.")
+                t(f"{detalle.strip().capitalize()}: there are {empresa.tecnicos} technicians and "
+                  f"{objetivo_tecnicos} are needed for {objetivo_ventas:.0f} sales/day.",
+                  f"{detalle.strip().capitalize()}: hay {empresa.tecnicos} técnicos y "
+                  f"hacen falta {objetivo_tecnicos} para {objetivo_ventas:.0f} ventas/día."))
+    return ("mantener", t("You are doing well: this month there is no need to force anything.",
+                          "Vas bien: este mes no hace falta forzar nada."))
 
 
 def _prompt(directiva: str, empresa: Empresa, mes: int, aviso: str = "",
@@ -201,17 +225,19 @@ def _prompt(directiva: str, empresa: Empresa, mes: int, aviso: str = "",
     objetivo_tecnicos = tecnicos_objetivo_del_mes(mes)
     potencia = ventas_potenciales(empresa)
     return (
-        f"DIRECTIVA={directiva}\n"
-        f"Mes {mes} de {META_MES}. Meta del dueño: {META_TECNICOS} técnicos para el mes {META_MES}.\n"
-        f"Ventas/día hoy: {potencia:.0f} (objetivo de este mes: {objetivo_ventas:.0f}; "
-        f"último mes cerrado: {reales:.0f}).\n"
-        f"Técnicos activos: {empresa.tecnicos} (objetivo: {objetivo_tecnicos}; "
-        f"tope de contratación: {tope}).\n"
-        f"Operadores: {empresa.operadores}. Mejoras de base/servicio: {empresa.mejoras}.\n"
-        f"Instalaciones sin turno: {atraso}. Caja: USD {empresa.caja:,.0f}.\n"
-        "Palancas disponibles: contratar operadores, contratar tecnicos, mejorar conversión.\n"
-        + (f"AVISO DEL PROGRAMA: {aviso}\n" if aviso else "")
-        + "Decidí cuánto mover y por qué."
+        f"DIRECTIVE={directiva}\n"
+        f"Month {mes} of {META_MES}. Owner goal: {META_TECNICOS} technicians by month {META_MES}.\n"
+        f"Sales/day today: {potencia:.0f} (this month's target: {objetivo_ventas:.0f}; "
+        f"last closed month: {reales:.0f}).\n"
+        f"Active technicians: {empresa.tecnicos} (target: {objetivo_tecnicos}; "
+        f"hiring cap: {tope}).\n"
+        f"Operators: {empresa.operadores}. Database/service improvements: {empresa.mejoras}.\n"
+        f"Installs without a slot: {atraso}. Cash: USD {empresa.caja:,.0f}.\n"
+        "Available levers: hire operators, hire technicians, improve conversion.\n"
+        + (f"PROGRAM NOTICE: {aviso}\n" if aviso else "")
+        + "Decide how much to move and why.\n"
+        + t("Write your reasoning and the minutes in ENGLISH.",
+            "Escribí tu razonamiento y el acta en ESPAÑOL.")
     )
 
 
@@ -238,23 +264,29 @@ def _red_seguridad(llm: LLMClient, store: Store, empresa: Empresa,
             inversion += SALARIO_OPERADOR_MES
             store.guardar_decision(
                 mes, "contratar_operadores", "1",
-                "Corrección del programa: sin más llamadas no se llega a la meta.",
-                True, "Red de seguridad: el programa lo corrigió.")
+                t("Program correction: without more calls the goal is not reached.",
+                  "Corrección del programa: sin más llamadas no se llega a la meta."),
+                True, t("Safety net: the program corrected it.",
+                        "Red de seguridad: el programa lo corrigió."))
         elif empresa.mejoras < MAX_MEJORAS:
             empresa.mejoras += 1
             empresa.caja -= _COSTO_MEJORA
             inversion += _COSTO_MEJORA
             store.guardar_decision(
                 mes, "mejorar_conversion", "1",
-                "Corrección del programa: mejorar la base y el servicio sube la conversión.",
-                True, "Red de seguridad: el programa lo corrigió.")
+                t("Program correction: improving the database and service raises conversion.",
+                  "Corrección del programa: mejorar la base y el servicio sube la conversión."),
+                True, t("Safety net: the program corrected it.",
+                        "Red de seguridad: el programa lo corrigió."))
         else:
             break
 
     if ventas_potenciales(empresa) < objetivo_ventas:
-        avisos.append(
-            f"AVISO: se quedaron en {ventas_potenciales(empresa):.0f} ventas/día "
-            f"frente a las {objetivo_ventas:.0f} del objetivo del mes.")
+        avisos.append(t(
+            f"NOTICE: they stayed at {ventas_potenciales(empresa):.0f} sales/day "
+            f"against the {objetivo_ventas:.0f} of the month's target.",
+            f"AVISO: quedaron en {ventas_potenciales(empresa):.0f} ventas/día "
+            f"contra las {objetivo_ventas:.0f} de la meta del mes."))
 
     # (b) que alcancen los técnicos.
     faltan = objetivo_tecnicos - empresa.tecnicos
@@ -264,11 +296,15 @@ def _red_seguridad(llm: LLMClient, store: Store, empresa: Empresa,
         for _ in range(faltan):
             store.guardar_decision(
                 mes, "contratar_tecnicos", "1",
-                "Corrección del programa: si no sumamos manos, no instalamos todo lo vendido.",
-                True, "Red de seguridad: el programa lo corrigió.")
-        avisos.append(
-            f"AVISO: el Gerente llegó corto a los {objetivo_tecnicos} técnicos; "
-            f"el programa sumó {faltan} para no dejar la meta incumplida.")
+                t("Program correction: if we don't add hands, we can't install everything sold.",
+                  "Corrección del programa: si no sumamos manos, no podemos instalar todo lo vendido."),
+                True, t("Safety net: the program corrected it.",
+                        "Red de seguridad: el programa lo corrigió."))
+        avisos.append(t(
+            f"NOTICE: the Manager fell short of {objetivo_tecnicos} technicians; "
+            f"the program added {faltan} so the goal isn't missed.",
+            f"AVISO: el Gerente quedó corto de {objetivo_tecnicos} técnicos; "
+            f"el programa sumó {faltan} para no perderse la meta."))
     return avisos, inversion
 
 
@@ -310,7 +346,7 @@ def reunion_mensual(llm: LLMClient, store: Store, empresa: Empresa, mes: int,
             break
         nueva_directiva, razon = _que_falta(empresa, mes, store)
         if nueva_directiva == directiva and aviso:
-            razon = f"{razon} Además: {aviso}"
+            razon = f"{razon} Also: {aviso}"
         directiva = nueva_directiva
 
     # Red de seguridad: transparencia total, queda escrito en el acta.
@@ -363,15 +399,18 @@ def _escribir_acta(llm: LLMClient, empresa: Empresa, mes: int,
                    decisiones: list[DecisionGerente], avisos: list[str],
                    objetivo_tecnicos: int) -> dict:
     """Pide al Gerente el resumen en criollo (o arma el fallback si no hay red)."""
-    titulo = f"Acta {mes} — reunión mensual de gerencia"
+    titulo = t(f"Minutes {mes} — monthly management meeting",
+               f"Acta {mes} — reunión mensual de gerencia")
     resumen_ia = ""
     try:
         reunion = llm.complete(
             agent="gerente",
             messages=[{"role": "user",
-                       "content": (f"DIRECTIVA=escribe_acta\n"
-                                   f"Mes {mes}. {len(decisiones)} decisiones aplicadas. "
-                                   f"Técnicos: {empresa.tecnicos} de {objetivo_tecnicos}.")}],
+                       "content": (f"DIRECTIVE=escribe_acta\n"
+                                   f"Month {mes}. {len(decisiones)} decisions applied. "
+                                   f"Technicians: {empresa.tecnicos} of {objetivo_tecnicos}.\n"
+                                   + t("Write the minutes in ENGLISH.",
+                                       "Escribí el acta en ESPAÑOL."))}],
             schema=ReunionGerente)
         titulo = reunion.titulo or titulo
         resumen_ia = reunion.resumen
@@ -379,13 +418,18 @@ def _escribir_acta(llm: LLMClient, empresa: Empresa, mes: int,
         resumen_ia = ""
 
     acciones = ", ".join(
-        f"{d.cantidad}x {d.palanca.value.replace('_', ' ')}" for d in decisiones) or "sin cambios"
+        f"{d.cantidad}x {d.palanca.value.replace('_', ' ')}" for d in decisiones) \
+        or t("no changes", "sin cambios")
     cuerpo = (
         f"{resumen_ia}\n\n"
-        f"Decisiones aplicadas: {acciones}.\n"
-        f"Estado: {empresa.operadores} operadores, {empresa.tecnicos} técnicos, "
-        f"{empresa.mejoras} mejoras de base/servicio. Caja: USD {empresa.caja:,.0f}.\n"
+        + t(f"Decisions applied: {acciones}.",
+            f"Decisiones aplicadas: {acciones}.") + "\n"
+        + t(f"Status: {empresa.operadores} operators, {empresa.tecnicos} technicians, "
+            f"{empresa.mejoras} database/service improvements. Cash: USD {empresa.caja:,.0f}.",
+            f"Situación: {empresa.operadores} operadores, {empresa.tecnicos} técnicos, "
+            f"{empresa.mejoras} mejoras de base/servicio. Caja: USD {empresa.caja:,.0f}.") + "\n"
         + ("".join(f"\n- {a}" for a in avisos) if avisos else "")
     )
     return {"titulo": titulo, "cuerpo": cuerpo,
-            "meta": f"{empresa.tecnicos}/{META_TECNICOS} técnicos (meta mes {META_MES})"}
+            "meta": t(f"{empresa.tecnicos}/{META_TECNICOS} technicians (month {META_MES} goal)",
+                      f"{empresa.tecnicos}/{META_TECNICOS} técnicos (meta del mes {META_MES})")}

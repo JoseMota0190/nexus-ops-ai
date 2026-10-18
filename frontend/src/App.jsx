@@ -1,13 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "./api.js";
-import Kpis from "./components/Kpis.jsx";
-import Escenario from "./components/Escenario.jsx";
-import Evolucion from "./components/Evolucion.jsx";
-import Acta from "./components/Acta.jsx";
-import { LogLlamadas, Motivos } from "./components/Llamadas.jsx";
-import AgenteVivo from "./components/AgenteVivo.jsx";
-import DetalleDia from "./components/DetalleDia.jsx";
-import MetricasAMD from "./components/MetricasAMD.jsx";
+import { getIdioma, setIdioma, t, useIdioma } from "./i18n.js";
 import FranjaAMD from "./components/FranjaAMD.jsx";
 import SectorPanel from "./components/SectorPanel.jsx";
 import MapaCaba from "./components/MapaCaba.jsx";
@@ -18,18 +11,15 @@ import PanelModal from "./components/PanelModal.jsx";
 import Pelicula from "./components/Pelicula.jsx";
 import SalaAgentes from "./components/SalaAgentes.jsx";
 
-const REFRESCO_ESTADO = 4000; // el estado "vivo" cada 4 segundos
-const REFRESCO_PESADO = 12000; // los gráficos y tablas, más tranqui
+const REFRESCO_ESTADO = 4000; // the "live" status every 4 seconds
+const REFRESCO_PESADO = 12000; // charts and tables, more calmly
 
 export default function App() {
+  const idioma = useIdioma(); // re-renders the whole screen when it changes
   const [estado, setEstado] = useState(null);
-  const [resumenes, setResumenes] = useState([]);
-  const [llamadas, setLlamadas] = useState([]);
   const [mapa, setMapa] = useState(null);
   const [metricas, setMetricas] = useState(null);
-  const [actas, setActas] = useState([]);
   const [sectores, setSectores] = useState(null);
-  const [evolus, setEvolus] = useState(null);
 
   const [errEstado, setErrEstado] = useState(null);
   const [errPesado, setErrPesado] = useState({});
@@ -38,15 +28,14 @@ export default function App() {
   const [cargandoPesado, setCargandoPesado] = useState(true);
   const [ocupado, setOcupado] = useState(null);
   const [aviso, setAviso] = useState(null);
-  const [detalleDia, setDetalleDia] = useState(null); // resumen del último día corrido
 
-  // La nueva pantalla: menú lateral, panel abierto y la película del día.
+  // The new screen: side menu, open panel and the day's movie.
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [panel, setPanel] = useState(null);
   const [pelicula, setPelicula] = useState(null);
   const [velocidad, setVelocidad] = useState(3);
-  const [rapido, setRapido] = useState(false); // interruptor: modo rápido vs sala
-  const [enVivo, setEnVivo] = useState(null); // progreso del día que corre en segundo plano
+  const [rapido, setRapido] = useState(false); // switch: fast mode vs live room
+  const [enVivo, setEnVivo] = useState(null); // progress of the day running in the background
 
   const vivo = useRef(true);
   const avisoTimer = useRef(null);
@@ -72,13 +61,9 @@ export default function App() {
 
   const traerPesado = useCallback(async () => {
     const tareas = [
-      ["resumenes", api.resumenes, setResumenes],
-      ["llamadas", api.llamadas, setLlamadas],
       ["mapa", api.mapa, setMapa],
       ["metricas", api.metricas, setMetricas],
-      ["actas", api.actas, setActas],
       ["sectores", api.sectores, setSectores],
-      ["evolus", api.evolusSalud, setEvolus],
     ];
     const errores = {};
     await Promise.all(
@@ -101,28 +86,37 @@ export default function App() {
     await Promise.all([traerEstado(), traerPesado()]);
   }, [traerEstado, traerPesado]);
 
-  // Arranque + polling: el estado cada 4 s, lo pesado cada 12 s.
+  // Boot + polling: status every 4 s, the heavy stuff every 12 s.
   useEffect(() => {
     vivo.current = true;
-    refrescarTodo();
-    const t1 = setInterval(traerEstado, REFRESCO_ESTADO);
-    const t2 = setInterval(traerPesado, REFRESCO_PESADO);
+    (async () => {
+      // Make the backend speak the same language as the screen (it may have been
+      // restarted since the last visit). English is a no-op.
+      try {
+        await api.idioma(getIdioma());
+      } catch {
+        /* if the engine is down, the normal error path will say so */
+      }
+      if (vivo.current) await refrescarTodo();
+    })();
+    const timerEstado = setInterval(traerEstado, REFRESCO_ESTADO);
+    const timerPesado = setInterval(traerPesado, REFRESCO_PESADO);
     return () => {
       vivo.current = false;
-      clearInterval(t1);
-      clearInterval(t2);
+      clearInterval(timerEstado);
+      clearInterval(timerPesado);
       if (avisoTimer.current) clearTimeout(avisoTimer.current);
     };
   }, [refrescarTodo, traerEstado, traerPesado]);
 
-  // El interruptor de modo: el backend manda si la Sala está negociando o no.
+  // The mode switch: the backend decides whether the room is negotiating or not.
   useEffect(() => {
     if (estado?.enjambre) setRapido(estado.enjambre.modo_sala === false);
   }, [estado?.enjambre?.modo_sala]);
 
-  // DÍA EN VIVO: si la Sala está negociando, el día corre en segundo plano y acá
-  // preguntamos cómo va cada 2 s, para que las burbujas vayan apareciendo. Cuando
-  // termina, abrimos la película del día (que ya trae todos los eventos).
+  // LIVE DAY: if the room is negotiating, the day runs in the background and here
+  // we ask how it is going every 2 s, so the bubbles keep appearing. When it
+  // finishes, we open the day's movie (which already carries all the events).
   const hayVivo = enVivo !== null;
   useEffect(() => {
     if (!hayVivo) return undefined;
@@ -138,17 +132,19 @@ export default function App() {
         setEnVivo(null);
         setOcupado(null);
         if (d.error) {
-          mostrarAviso("error", `El día en vivo se cortó: ${d.error}`);
+          mostrarAviso("error", t(`The live day stopped: ${d.error}`,
+                                   `El día en vivo se cortó: ${d.error}`));
         } else if (d.resultado) {
-          setDetalleDia(d.resultado);
           setPelicula(d.resultado);
           if (d.resultado.mes_cerrado) {
             mostrarAviso(
               "ok",
-              `Se cerró el mes ${d.resultado.mes_cerrado_numero}: los 4 sectores dejaron su informe.`,
+              t(`Month ${d.resultado.mes_cerrado_numero} closed: all 4 sectors filed their report.`,
+                `Cerró el mes ${d.resultado.mes_cerrado_numero}: los 4 sectores presentaron su informe.`),
             );
           } else {
-            mostrarAviso("ok", "El día terminó: mirá cómo lo cuenta la película.");
+            mostrarAviso("ok", t("The day is done: watch the movie to see how it went.",
+                                 "Terminó el día: mirá la película para ver cómo fue."));
           }
         }
         await refrescarTodo();
@@ -169,40 +165,16 @@ export default function App() {
     };
   }, [hayVivo, refrescarTodo, mostrarAviso]);
 
-  // ------------------------------------------------------------- acciones
-  async function correr(que, funcion, mensajeOk) {
-    if (ocupado) return undefined;
-    setOcupado(que);
-    setAviso(null);
-    try {
-      const r = await funcion();
-      const extra =
-        r && typeof r === "object" && r.corridos !== undefined
-          ? ` (${r.corridos} ${r.corridos === 1 ? "mes" : "meses"} corridos)`
-          : "";
-      mostrarAviso("ok", mensajeOk + extra);
-      await refrescarTodo();
-      return r;
-    } catch (e) {
-      mostrarAviso("error", e.message);
-      return undefined;
-    } finally {
-      setOcupado(null);
-    }
-  }
-
-  const avanzarMes = () =>
-    correr("mes", api.avanzarMes, "Listo: el mes se corrió y el Gerente IA dejó su acta.");
-
-  // Un día entero: el motor lo resuelve al instante y después lo REPRODUCIMOS
-  // a cámara lenta, para que el dueño vea la operación respirando.
+  // ------------------------------------------------------------- actions
+  // A full day: the engine solves it instantly and then we REPLAY it in slow
+  // motion, so the owner sees the operation breathing.
   async function correrUnDia() {
     if (ocupado || pelicula) return;
     setAviso(null);
 
-    // Modo sala (mes 7 en adelante): los agentes negocian venta por venta y AMD
-    // piensa lento, así que el día corre en SEGUNDO PLANO y lo vemos llenarse en
-    // vivo. El resto lo sigue el efecto del día en vivo (el que pregunta cada 2 s).
+    // Live room (month 7 onward): the agents negotiate sale by sale and AMD
+    // thinks slowly, so the day runs in the BACKGROUND and we watch it fill up
+    // live. The rest is followed by the live-day effect (the one polling every 2 s).
     if (estado?.enjambre?.activo) {
       setOcupado("dia");
       setEnVivo({ agendadas_hoy: 0, negociados_hoy: 0 });
@@ -216,19 +188,19 @@ export default function App() {
       return;
     }
 
-    // Modo rápido: el día se resuelve al toque.
+    // Fast mode: the day is solved instantly.
     setOcupado("dia");
     try {
       const r = await api.avanzarDia();
       if (r && typeof r === "object" && r.leads !== undefined) {
-        setDetalleDia(r);
-        setPelicula(r); // arranca la película (si no hay guion, se la salta)
+        setPelicula(r); // starts the movie (if there is no script, it skips it)
       }
       await refrescarTodo();
       if (r?.mes_cerrado) {
         mostrarAviso(
           "ok",
-          `Se cerró el mes ${r.mes_cerrado_numero}: los 4 sectores dejaron su informe.`,
+          t(`Month ${r.mes_cerrado_numero} closed: all 4 sectors filed their report.`,
+            `Cerró el mes ${r.mes_cerrado_numero}: los 4 sectores presentaron su informe.`),
         );
       }
     } catch (e) {
@@ -238,11 +210,8 @@ export default function App() {
     }
   }
 
-  const correrSeis = () =>
-    correr("seis", () => api.correrTodo(6), "¡Seis meses corridos de una!");
-
-  // El interruptor: pasar de "modo sala" (los agentes negocian cada venta) a
-  // "modo rápido" (los días corren sin charla) y viceversa.
+  // The switch: go from "live room" (the agents negotiate every sale) to
+  // "fast mode" (the days run without chat) and back.
   async function cambiarModo() {
     if (ocupado || pelicula) return;
     const nuevo = !rapido;
@@ -252,97 +221,66 @@ export default function App() {
       mostrarAviso(
         "ok",
         nuevo
-          ? "Modo rápido: los días corren sin charla (para llegar lejos)."
-          : "Modo sala: los agentes negocian cada venta en vivo.",
+          ? t("Fast mode: the days run without chat (to get far).",
+              "Modo rápido: los días corren sin charla (para llegar lejos).")
+          : t("Live room: the agents negotiate every sale live.",
+              "Sala en vivo: los agentes negocian venta por venta."),
       );
       await refrescarTodo();
     } catch (e) {
       mostrarAviso("error", e.message);
     }
   }
-  const reiniciar = () => {
-    if (
-      !window.confirm(
-        "¿Reiniciar la simulación? Se borran los 9 meses corridos y volvemos al mes 1.",
-      )
-    ) {
-      return;
+
+  // The ES/EN button: the backend switches to the base of that language and the
+  // whole screen re-renders. It never interrupts a live day.
+  async function cambiarIdioma(lang) {
+    if (lang === idioma) return;
+    try {
+      await api.idioma(lang);
+      setIdioma(lang);
+      await refrescarTodo();
+    } catch (e) {
+      mostrarAviso("error", e.message);
     }
-    correr("reiniciar", api.reiniciar, "Simulación reiniciada: arrancamos de cero.");
-  };
+  }
 
   function abrirPanel(id) {
     setPanel(id);
     setMenuAbierto(false);
   }
 
-  // El contenido de cada panel del menú.
+  // The content of each menu panel.
   function contenidoPanel(id) {
     switch (id) {
-      // ------------------------------------------------ los 4 SECTORES
+      // ------------------------------------------------ the 4 SECTORS
       case "gerente":
       case "ventas":
       case "agenda":
       case "facturacion":
         return <SectorPanel sector={id} />;
-
-      // --------------------------------- paneles viejos (ocultos del menú)
-      case "sala":
-        return <SalaAgentes estado={estado} />;
-      case "kpis":
-        return <Kpis estado={estado} />;
-      case "dia":
-        return <DetalleDia detalle={detalleDia} />;
-      case "llamadas":
-        return (
-          <LogLlamadas llamadas={llamadas} cargando={cargandoPesado} error={errPesado.llamadas} />
-        );
-      case "motivos":
-        return <Motivos motivos={estado?.motivos} cargando={cargandoEstado} error={errEstado} />;
-      case "gerencia":
-        return (
-          <Acta
-            actas={actas}
-            decisiones={estado?.decisiones ?? []}
-            cargando={cargandoPesado}
-            error={errPesado.actas}
-          />
-        );
-      case "evolucion":
-        return (
-          <Evolucion
-            resumenes={resumenes}
-            cargando={cargandoPesado}
-            error={errPesado.resumenes}
-          />
-        );
-      case "mapa":
-        return <MapaCaba mapa={mapa} cargando={cargandoPesado} error={errPesado.mapa} />;
-      case "escenario":
-        return <Escenario estado={estado} />;
-      case "agente":
-        return <AgenteVivo />;
-      case "amd":
-        return <MetricasAMD metricas={metricas} cargando={cargandoPesado} error={errPesado.metricas} />;
       default:
         return null;
     }
   }
 
-  // --------------------------------------------------------------- pantallas
+  // --------------------------------------------------------------- screens
   if (errEstado && !estado) {
     return (
       <div className="app">
         <div className="aviso aviso-error" style={{ marginTop: 18 }}>
           <span>🚧</span>
           <span>
-            <strong>No pude conectar con el motor de la simulación.</strong>
+            <strong>{t("I couldn't reach the simulation engine.",
+                        "No pude alcanzar el motor de simulación.")}</strong>
             <br />
             {errEstado}
             <br />
-            Fijate de levantarlo con{" "}
-            <code>.\.venv\Scripts\python.exe -m uvicorn api:app --port 8000</code> desde la
-            carpeta <code>backend</code> y volvé a cargar la página.
+            {t("Make sure it is running with", "Fijate que esté corriendo con")}{" "}
+            <code>.\.venv\Scripts\python.exe -m uvicorn api:app --port 8000</code>{" "}
+            {t("from the", "desde la carpeta")}
+            <code>backend</code> {t("folder, then reload the page.",
+                                    "y después recargá la página.")}
           </span>
         </div>
       </div>
@@ -358,21 +296,24 @@ export default function App() {
         cargando={cargandoEstado}
         corriendo={ocupado}
         menuAbierto={menuAbierto}
+        idioma={idioma}
+        onIdioma={cambiarIdioma}
         onMenu={() => setMenuAbierto((a) => !a)}
       />
 
       <main className="escena">
-        {/* El mapa de CABA a pantalla completa: el FONDO de todo. */}
+        {/* The CABA map full screen: the BACKGROUND of everything. */}
         <MapaCaba mapa={mapa} cargando={cargandoPesado} error={errPesado.mapa} portada />
 
-        {/* El logo de Nexus, respirando en el centro del mapa. */}
+        {/* The Nexus logo, breathing at the center of the map. */}
         <div className="logo-centro" aria-hidden="true">
           <div className="logo-caja">
             <Logo tamano={82} className="logo-mark" />
             <div className="logo-nombre">
               NEXUS<span>ALARM</span>
             </div>
-            <div className="logo-bajada">Gemelo digital de la operación</div>
+            <div className="logo-bajada">{t("Digital twin of the operation",
+                                             "Gemelo digital de la operación")}</div>
           </div>
         </div>
 
@@ -386,12 +327,13 @@ export default function App() {
         {errEstado && estado ? (
           <div className="aviso aviso-info aviso-flotante">
             <span>💤</span>
-            <span>El motor dejó de responder por un momento: sigo reintentando solo.</span>
+            <span>{t("The engine paused for a moment: I'll keep retrying on my own.",
+                     "El motor se tomó un respiro: sigo reintentando solo.")}</span>
           </div>
         ) : null}
       </main>
 
-      {/* El PIE: el cuadro de simulación + la Sala de Agentes + la franja AMD. */}
+      {/* The FOOTER: the simulation box + the Agent Room + the AMD strip. */}
       <footer className="pie">
         <div className="menu-simulacion">
           <button
@@ -399,10 +341,11 @@ export default function App() {
             onClick={correrUnDia}
             disabled={!!ocupado || !!pelicula}
           >
-            {ocupado === "dia" ? "Corriendo el día…" : "▶ Correr un día"}
+            {ocupado === "dia" ? t("Running the day…", "Corriendo el día…")
+              : t("▶ Run one day", "▶ Correr un día")}
           </button>
 
-          <span className="menu-sim-e">Velocidad de la película</span>
+          <span className="menu-sim-e">{t("Movie speed", "Velocidad de la película")}</span>
           <div className="menu-sim-vel">
             {[3, 6, 9].map((v) => (
               <button
@@ -416,23 +359,25 @@ export default function App() {
             ))}
           </div>
 
-          <span className="menu-sim-e">Modo del enjambre</span>
+          <span className="menu-sim-e">{t("Swarm mode", "Modo enjambre")}</span>
           <button
             className={`boton boton-chico ${rapido ? "boton-fantasma" : "boton-primario"}`}
             onClick={cambiarModo}
             disabled={!!ocupado || !!pelicula}
-            title="En modo sala, la IA negocia cada venta (a partir del mes 7)"
+            title={t("In live room mode, the AI negotiates every sale (from month 7 on)",
+                     "En modo sala, la IA negocia cada venta (desde el mes 7)")}
           >
-            {rapido ? "⚡ Modo rápido" : "🗣️ Modo sala"}
+            {rapido ? t("⚡ Fast mode", "⚡ Modo rápido") : t("🗣️ Live room", "🗣️ Sala en vivo")}
           </button>
         </div>
 
-        {/* La SALA DE AGENTES, dentro del mismo cuadro de simulación. */}
+        {/* The AGENT ROOM, inside the same simulation box. */}
         <section className="sim-sala">
           <div className="sim-sala-cab">
-            <span className="sim-sala-titulo">🗣️ Sala de agentes en vivo</span>
+            <span className="sim-sala-titulo">{t("🗣️ Live agent room", "🗣️ Sala de agentes en vivo")}</span>
             <span className="sim-sala-nota">
-              Los agentes negocian cada venta sobre AMD; acá se ve la charla tal cual.
+              {t("The agents negotiate every sale on AMD; here you see the chat exactly as it is.",
+                 "Los agentes negocian cada venta sobre AMD; acá ves la charla tal cual es.")}
             </span>
           </div>
           <div className="sim-sala-caja">
@@ -440,28 +385,30 @@ export default function App() {
           </div>
         </section>
 
-        {/* La franja AMD: el pulso del cerebro, siempre a la vista. */}
-        <FranjaAMD metricas={metricas} evolus={evolus} />
+        {/* The AMD strip: the pulse of the brain, always in sight. */}
+        <FranjaAMD metricas={metricas} />
       </footer>
 
-        {/* El DÍA EN VIVO: mientras los agentes negocian, tapamos el mapa con la Sala
-            y dejamos que las burbujas vayan apareciendo (AMD piensa lento, ~15 s). */}
+        {/* The LIVE DAY: while the agents negotiate, we cover the map with the room
+            and let the bubbles keep appearing (AMD thinks slowly, ~15 s). */}
         {enVivo ? (
           <div className="vivo-envoltorio">
             <div className="vivo-caja">
               <div className="vivo-cab">
                 <span className="sala-pill sala-on">
-                  <i className="sala-punto" /> DÍA EN VIVO · los agentes están negociando
+                  <i className="sala-punto" /> {t("LIVE DAY · the agents are negotiating",
+                                                  "DÍA EN VIVO · los agentes están negociando")}
                 </span>
                 <span className="vivo-progreso">
                   {enVivo.agendadas_hoy > 0
-                    ? `${enVivo.agendadas_hoy} ${enVivo.agendadas_hoy === 1 ? "venta agendada" : "ventas agendadas"} hoy`
-                    : "arrancando el día…"}
+                    ? t(`${enVivo.agendadas_hoy} ${enVivo.agendadas_hoy === 1 ? "sale booked" : "sales booked"} today`,
+                        `${enVivo.agendadas_hoy} ${enVivo.agendadas_hoy === 1 ? "venta agendada" : "ventas agendadas"} hoy`)
+                    : t("starting the day…", "arrancando el día…")}
                 </span>
               </div>
               <p className="vivo-bajada">
-                El cerebro corre sobre AMD y piensa lento (unos 15 s por agente), así que
-                el día se va armando de a poco. Mirá cómo se llena la sala.
+                {t("The brain runs on AMD and thinks slowly (about 15 s per agent), so the day builds up little by little. Watch the room fill up.",
+                   "El cerebro corre sobre AMD y piensa despacio (unos 15 s por agente), así que el día se arma de a poco. Mirá cómo se llena la sala.")}
               </p>
               <div className="vivo-sala">
                 <SalaAgentes estado={estado} refrescoMs={2500} />
@@ -470,16 +417,13 @@ export default function App() {
           </div>
         ) : null}
 
-        {/* La película del día: tapa el mapa mientras se reproduce. */}
+        {/* The day's movie: it covers the map while it plays. */}
         {diaParaPelicula ? (
           <div className="pelicula-envoltorio">
             <Pelicula
               dia={diaParaPelicula}
               velocidadInicial={velocidad}
-              onTerminar={() => {
-                setPelicula(null);
-                setPanel("dia");
-              }}
+              onTerminar={() => setPelicula(null)}
             />
           </div>
         ) : null}

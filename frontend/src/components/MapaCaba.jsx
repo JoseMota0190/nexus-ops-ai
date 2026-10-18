@@ -1,21 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
-import { DIAS } from "../format.js";
+import { diasSemana } from "../format.js";
+import { t, useIdioma } from "../i18n.js";
 import { BARRIOS_CABA } from "../caba.js";
 
 const W = 720;
 const H = 520;
-// El panel necesita aire a la derecha para los rótulos de los barrios; la
-// portada va centrada y limpia.
+// The panel needs air on the right for the neighborhood labels; the cover is
+// centered and clean.
 const PAD_PANEL = { izq: 58, der: 150, arr: 44, aba: 52 };
 const PAD_PORTADA = { izq: 34, der: 34, arr: 30, aba: 30 };
 const COLORES = ["#ff5a36", "#4aa8ff", "#35d39a", "#ffc53d", "#c77dff", "#ff9f6e",
   "#59e0c5", "#ff6fae", "#8ad36a", "#7aa2ff"];
 
-// CABA está a ~34.6° de latitud: 1° de longitud mide 0.823° "de latitud".
+// CABA is at ~34.6° latitude: 1° of longitude measures 0.823° "of latitude".
 const FACTOR_LON = 0.823;
 
-// El mapa REAL de la Ciudad: los 48 barrios con sus polígonos (ver src/caba.js).
-// Aplanamos todos sus puntos para que el encuadre del dibujo los contenga siempre.
+// The REAL map of the City: the 48 neighborhoods with their polygons (see src/caba.js).
+// We flatten all their points so the drawing's frame always contains them.
 const PUNTOS_CABA = [];
 for (const barrio of BARRIOS_CABA) {
   for (const anillo of barrio.anillos) {
@@ -27,7 +28,7 @@ function proyectador(zonas, extra = [], pad = PAD_PANEL) {
   const puntos = Object.entries(zonas)
     .filter(([, z]) => z && z.lat != null && z.lon != null)
     .map(([, z]) => z);
-  // El mapa (barrios) entra en el encuadre: así el dibujo queda siempre adentro.
+  // The map (neighborhoods) fits in the frame: that way the drawing is always inside.
   const extras = extra.map(([lat, lon]) => ({ lat, lon }));
   const todos = puntos.concat(extras);
   if (todos.length === 0) return null;
@@ -58,14 +59,16 @@ function proyectador(zonas, extra = [], pad = PAD_PANEL) {
 }
 
 /**
- * Mapa de CABA.
+ * CABA map.
  *
- * Dos modos:
- *  - `portada`  → a pantalla completa, sin caja ni títulos: es el FONDO de la
- *    pantalla del dueño. Solo el mapa y una barrita chica con los días.
- *  - normal     → dentro de una caja con explicación (el panel de siempre).
+ * Two modes:
+ *  - `portada`  → full screen, without a box or titles: it is the BACKGROUND of
+ *    the owner's screen. Only the map and a small bar with the days.
+ *  - normal     → inside a box with an explanation (the regular panel).
  */
 export default function MapaCaba({ mapa, cargando, error, portada = false }) {
+  useIdioma();
+  const DIAS = diasSemana();
   const [diaActivo, setDiaActivo] = useState(0);
   const [corriendo, setCorriendo] = useState(true);
 
@@ -77,7 +80,7 @@ export default function MapaCaba({ mapa, cargando, error, portada = false }) {
     [zonas, portada],
   );
 
-  // Cada barrio como un path SVG (una sola vez, salvo que cambie el encuadre).
+  // Each neighborhood as an SVG path (only once, unless the frame changes).
   const caminosBarrios = useMemo(() => {
     if (!punto) return [];
     return BARRIOS_CABA.map((barrio) => ({
@@ -118,7 +121,7 @@ export default function MapaCaba({ mapa, cargando, error, portada = false }) {
     [totalPorDia],
   );
 
-  // Pasito automático por los días de la semana.
+  // Automatic step through the days of the week.
   useEffect(() => {
     if (!corriendo || diasConCitas.length === 0) return;
     const t = setInterval(() => {
@@ -136,13 +139,14 @@ export default function MapaCaba({ mapa, cargando, error, portada = false }) {
   const maxBarrio = Math.max(1, ...Object.values(citasDeHoy));
   const barriosActivos = Object.keys(citasDeHoy).length;
 
-  // El dibujo en sí (lo comparten el modo portada y el panel normal).
+  // The drawing itself (shared by the cover mode and the regular panel).
   const dibujo = (
     <svg
       className="mapa-svg"
       viewBox={`0 0 ${W} ${H}`}
       role="img"
-      aria-label="Mapa de CABA con las instalaciones por barrio"
+      aria-label={t("CABA map with the installs by neighborhood",
+                    "Mapa de CABA con las instalaciones por barrio")}
     >
       <g className="caba-barrios">
         {caminosBarrios.map((b) => (
@@ -243,21 +247,22 @@ export default function MapaCaba({ mapa, cargando, error, portada = false }) {
       <button
         className="dia-chip"
         onClick={() => setCorriendo((c) => !c)}
-        title="Pausar o reanudar la animación"
+        title={t("Pause or resume the animation", "Pausar o reanudar la animación")}
       >
-        {corriendo ? "⏸ Pausar" : "▶ Reproducir"}
+        {corriendo ? t("⏸ Pause", "⏸ Pausa") : t("▶ Play", "▶ Reproducir")}
       </button>
     </div>
   );
 
-  // --------------------------------------------------- modo portada
-  // Pantalla de inicio: el mapa llena todo, sin caja ni títulos.
+  // --------------------------------------------------- cover mode
+  // Home screen: the map fills everything, without a box or titles.
   if (portada) {
     if (error) return <div className="error-caja mapa-portada-aviso">{error}</div>;
     if (!mapa) {
       return (
         <div className="mapa-portada-vacio">
-          {cargando ? "Dibujando el mapa…" : "No pude leer el mapa todavía."}
+          {cargando ? t("Drawing the map…", "Dibujando el mapa…")
+            : t("I couldn't read the map yet.", "Todavía no pude leer el mapa.")}
         </div>
       );
     }
@@ -268,21 +273,25 @@ export default function MapaCaba({ mapa, cargando, error, portada = false }) {
     );
   }
 
-  // ---------------------------------------------------- modo panel normal
+  // ---------------------------------------------------- regular panel mode
   return (
     <div className="panel panel-ancho">
       <h2 className="panel-titulo">
-        <span className="icono">🗺️</span> Mapa de CABA — las visitas del día
+        <span className="icono">🗺️</span> {t("CABA map — the day's visits",
+                                            "Mapa de CABA — las visitas del día")}
       </h2>
       <p className="panel-sub">
-        Cada bolita es un barrio: cuanto más grande, más instalaciones se agendaron ahí. Los
-        cuadritos son los técnicos y su zona base. Semana {mapa?.semana ?? "—"}.
+        {t("Each dot is a neighborhood: the bigger it is, the more installs were booked there. The little squares are the technicians and their base zone.",
+           "Cada punto es un barrio: cuanto más grande, más instalaciones se agendaron ahí. Los cuadraditos son los técnicos y su zona base.")}{" "}
+        {t("Week", "Semana")} {mapa?.semana ?? "—"}.
       </p>
 
       {error ? <div className="error-caja">{error}</div> : null}
-      {!error && cargando && !mapa ? <div className="cargando">Dibujando el mapa…</div> : null}
+      {!error && cargando && !mapa ? (
+        <div className="cargando">{t("Drawing the map…", "Dibujando el mapa…")}</div>
+      ) : null}
       {!error && !mapa && !cargando ? (
-        <div className="sin-datos">No pude leer el mapa todavía.</div>
+        <div className="sin-datos">{t("I couldn't read the map yet.", "Todavía no pude leer el mapa.")}</div>
       ) : null}
 
       {mapa ? (
@@ -293,28 +302,30 @@ export default function MapaCaba({ mapa, cargando, error, portada = false }) {
             <div>{dibujo}</div>
 
             <div>
-              <div className="sub-motivo">Técnicos y su zona base</div>
+              <div className="sub-motivo">{t("Technicians and their base zone",
+                                              "Técnicos y su zona base")}</div>
               <div className="tecnicos-lista">
                 {tecnicos.length === 0 ? (
-                  <div className="sin-datos">Sin técnicos cargados.</div>
+                  <div className="sin-datos">{t("No technicians loaded.", "No hay técnicos cargados.")}</div>
                 ) : (
-                  tecnicos.map((t, i) => {
+                  tecnicos.map((tec, i) => {
                     const hoy = citas.filter(
-                      (c) => Number(c.dia) === diaActivo && Number(c.tecnico_id) === Number(t.id),
+                      (c) => Number(c.dia) === diaActivo && Number(c.tecnico_id) === Number(tec.id),
                     ).length;
                     return (
-                      <div className="tecnico" key={t.id}>
+                      <div className="tecnico" key={tec.id}>
                         <span
                           className="inicial"
                           style={{ background: COLORES[i % COLORES.length] }}
                         >
-                          {String(t.nombre || "?").trim().charAt(0).toUpperCase()}
+                          {String(tec.nombre || "?").trim().charAt(0).toUpperCase()}
                         </span>
-                        <span>{t.nombre}</span>
+                        <span>{tec.nombre}</span>
                         <span className="zona">
-                          {t.zona_base}
+                          {tec.zona_base}
                           <br />
-                          {hoy} visita{hoy === 1 ? "" : "s"} hoy
+                          {hoy} {hoy === 1 ? t("visit today", "visita hoy")
+                                          : t("visits today", "visitas hoy")}
                         </span>
                       </div>
                     );
@@ -325,15 +336,15 @@ export default function MapaCaba({ mapa, cargando, error, portada = false }) {
               <div className="mapa-stats">
                 <div className="dato">
                   <b>{totalHoy}</b>
-                  instalaciones {DIAS[diaActivo].toLowerCase()}
+                  {t("installs", "instalaciones")} {DIAS[diaActivo].toLowerCase()}
                 </div>
                 <div className="dato">
                   <b>{barriosActivos}</b>
-                  barrios con trabajo
+                  {t("neighborhoods with work", "barrios con trabajo")}
                 </div>
                 <div className="dato">
                   <b>{mapa.capacidad_dia ?? 0}</b>
-                  cupos por día
+                  {t("slots per day", "turnos por día")}
                 </div>
               </div>
             </div>

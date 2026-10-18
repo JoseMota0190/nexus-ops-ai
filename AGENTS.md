@@ -40,7 +40,9 @@ escenarios "qué pasa si".
   **Actualización 14 oct:** el portal `notebooks.amd.com/tokenfactory` respondió
   *"Your email is not registered for API key distribution"* → el autor decidió **NO insistir
   más**. El motor pasa a ser **AMD Radeon Cloud** (`developer.amd.com.cn/radeon`).
-- **Evolus (secundario, módulo aislado):** extractor de documentos + workflow de contratos.
+- **Evolus: QUEDÓ ELIMINADO (18 oct).** El código de evento (`AMDACT3`) cerró y no se consiguió
+  workspace → se borró el módulo `backend/evolus/` y `EVOLUS.md`. El **auditor de facturas se
+  mantuvo, pero es por reglas** (no usa IA): vive en `backend/engine/facturas.py`.
 - **Google/Gemma: YA NO ESTÁ DESCARTADO** (cambio de decisión del autor, 14 oct).
   Google DeepMind entró como partner del hackathon y **Gemma corre sobre GPU de AMD (ROCm)**,
   así que **no viola el requisito de AMD** y además da acceso a un **premio extra de Google**.
@@ -106,8 +108,9 @@ Reglas del track Commerce (lablab.ai):
 - **Registro de leads:** TODOS los leads entran por la web pidiendo ser llamados.
   **NO hay llamada en frío** (decisión del autor, cerrada). El "No Llame" de AAIP quedó
   FUERA del proyecto — no simularlo, no mencionarlo.
-- **Sello ARCA:** el comprobante lleva **"SIMULADO – SIN VALIDEZ FISCAL"**. Jamás afirmar
-  facturación real. (Evolus NO es ERP ni factura.)
+- **Sello ARCA:** el comprobante lleva **"SIMULATED – NO FISCAL VALIDITY"** (inglés) /
+  **"SIMULADO – SIN VALIDEZ FISCAL"** (español), según el idioma activo
+  (`backend/engine/facturas.py`, función `sello()`). Jamás afirmar facturación real.
 
 ---
 
@@ -143,8 +146,10 @@ porque el gerente **sube la conversión**. Pregunta del pitch: *"¿cómo vendo 5
 
 ## 6. ESTADO ACTUAL (lo que YA ESTÁ construido y PROBADO)
 
-Repo local en **`C:\Users\josem\projects\nexus-ops-ai`** (git inicializado, rama **`main`**
-ya renombrada ✅). **Sin remote, sin push todavía** (autorizado; se sube en la entrega final).
+Repo local en **`C:\Users\josem\projects\nexus-ops-ai`** (rama **`main`**). **Repo PÚBLICO en
+GitHub + deploy en vivo ✅** (sesión del 18 oct): `https://nexus-ops-ai.netlify.app` (frontend) y
+`https://nexus-ops-ai-backend.onrender.com` (backend). El push queda para el **final** (un solo
+push/deploy, así Netlify/Render no redeployan a mitad del trabajo).
 
 **✅ Fases 2 a 8 construidas y probadas** (ver detalle de fases más abajo):
 - `backend/store.py` — SQLite real (clientes, leads, llamadas, motivos, citas, técnicos,
@@ -164,16 +169,16 @@ ya renombrada ✅). **Sin remote, sin push todavía** (autorizado; se sube en la
 - `frontend/` — pantalla del dueño en React + Vite: **mapa CABA a pantalla completa** con el
   **logo de Nexus** latiendo al centro · **pie** con el cuadro de simulación + la **Sala de
   Agentes** adentro + la **franja AMD** siempre visible · **menú ☰ con los 4 sectores**
-  (Gerencia · Ventas · Agenda y técnicos · Facturación), cada uno con su informe mensual.
-  Los paneles viejos (KPIs, telégrafo, motivos, evolución, sliders, panel AMD) **siguen en el
-  código** pero ya no se ofrecen en el menú. `npm run build` compila; `npm run smoke` da
-  **45/45 checks** y **falla si algún pedido del backend no responde 200**.
+  (Management · Sales · Scheduling & technicians · Billing), cada uno con su informe mensual ·
+  **botón ES/EN** en el header. `npm run build` compila; `npm run smoke` da **46/46 checks**
+  (incluye el cambio de idioma) y **falla si algún pedido del backend no responde 200**.
 - `backend/engine/sectores.py` + `redactor.py` — los **4 sectores**: el programa calcula los
-  números → **la IA de AMD los analiza** → **Evolus redacta** el documento → **respaldo local**
-  si Evolus está apagado o falla. Los informes quedan en la tabla `reportes_sector`. La siembra
-  de los 6 meses los escribe **localmente** (sin red ni créditos).
-- `backend/evolus/` — módulo de Evolus **ya conectado** al backend (`app.include_router`, con
-  `try/except`). Corre en **modo prueba** hasta que haya clave. Ver `EVOLUS.md`.
+  números → **la IA de AMD los analiza** → **el redactor local arma el documento** (sin red ni
+  créditos). Los informes quedan en la tabla `reportes_sector`. La siembra de los 6 meses los
+  escribe **localmente**.
+- `backend/engine/facturas.py` — **auditor de facturas por reglas** (Monte Carlo + detección de
+  defectos y su lectura). El sello (`sello()`) es bilingüe. **No usa IA** (era el rol del Evolus
+  eliminado).
 - `backend/llm/client.py` — **respaldo automático**: si el modelo de AMD falla o devuelve basura,
   se usa la respuesta local y queda anotado como `fallback_calls` (el demo NUNCA se rompe).
 - `backend/tests/probar_amd.py` — **herramienta de conexión real**: lista el catálogo de modelos,
@@ -182,10 +187,10 @@ ya renombrada ✅). **Sin remote, sin push todavía** (autorizado; se sube en la
 - `docker-compose.yml` + `backend/Dockerfile` + `frontend/Dockerfile` + `nginx.conf` +
   `render.yaml` + `frontend/netlify.toml` + `scripts/dev.cmd`.
   **Docker verificado de punta a punta el 14 oct** (arranca, siembra 6 meses y el proxy de nginx
-  anda). **Ojo:** esta sesión (17 oct) **NO se pudo re-verificar** porque Docker Desktop estaba
-  cerrado → queda como pendiente barato para el autor.
-- `backend/tests/` — **104 tests**: `test_engine.py` (22), `test_llm.py` (6), `test_api.py` (14),
-  `test_enjambre.py` (14), `test_evolus.py` (48) + `mirar_negocio.py`.
+  anda). **Ojo:** en las sesiones del 17–18 oct **NO se pudo re-verificar** porque Docker Desktop
+  estaba cerrado → queda como pendiente barato para el autor.
+- `backend/tests/` — **77 tests**: `test_engine.py` (22), `test_llm.py` (6), `test_api.py` (14),
+  `test_enjambre.py` (14), `test_facturas.py` (21) + `mirar_negocio.py`.
 
 **Números verificados** (`mirar_negocio.py`, semilla 42 — los mismos que muestra la app): mes 1 →
 6.8 ventas/día, 3 operadores, 2 técnicos. Mes 9 → 30.5 ventas/día, 8 operadores,
@@ -202,23 +207,22 @@ faltante. Ahora hay test que barre todos los GET y prueba ese POST.
 **⚠️ El `leads.py` viejo (200–250/día, 8% "No Llame", 10 técnicos fijos) ya fue REARMADO**
 al modelo real del §3. No hay que rearmar nada más.
 
-### 🎨 Rebranding + sectores + Evolus (sesión del 17 oct) ✅ pusheado
+### 🎨 Rebranding + sectores (17 oct) ✅ pusheado
 
-Rama `main`, últimos commits (todo verificado: **104 tests + 45 smoke en verde**):
+Rama `main`, commits (todo verificado en su momento):
 
 1. **Fase 0** (`b7004b4`) — portada nueva: header con la marca + ☰, **mapa real de CABA** (48
    barrios) a pantalla completa, **logo de Nexus** latiendo al centro, pie de simulación abajo.
-   Se agregó `frontend/src/caba.js`, `scripts/build-caba-map.py`, el módulo `backend/evolus/` y
-   `ejemplo.png` (la placa de referencia).
+   Se agregó `frontend/src/caba.js` y `scripts/build-caba-map.py` (el `ejemplo.png` de referencia
+   se borró después, en la limpieza del 18 oct).
 2. **Fase 0.5** (`793aead`) — **paleta nueva** (fondo `#060B1F`, panel `#0E1A44`, azul, violeta,
    cyan…) con Montserrat + Inter; el chevron "A" de la marca re-hecho como **SVG** (`Logo.jsx`).
 3. **Fase 1** (`4642c77`) — los **4 sectores**. Menú ☰ con **solo** los sectores; cada uno tiene su
    informe del mes (`GET /api/sectores`, `/api/sectores/{id}`, `POST .../generar`,
    `/api/facturacion`). **Franja AMD** abajo siempre visible; **Sala de Agentes** dentro del
-   cuadro de simulación. Paneles viejos, ocultos del menú pero vivos en el código.
-4. **Fase 2 + docs** (`9b58a40`, `5f90750`) — **Evolus conectado** y como *redactor* de los
-   informes de sector; `README.md` / `PITCH.md` / `SLIDES.md` al menú nuevo y al motor AMD real
-   (se sacó "TokenFactory" de todo el código y la doc).
+   cuadro de simulación.
+4. **Fase 2 + docs** (`9b58a40`, `5f90750`) — `README.md` / `PITCH.md` / `SLIDES.md` al menú nuevo
+   y al motor AMD real (se sacó "TokenFactory" de todo el código y la doc).
 5. **Fix del modo día a día** (`72d8002`) — **bug real encontrado y corregido:** al correr día por
    día, el mes **nunca cerraba** → no había reunión del Gerente ni informes de sector. Ahora
    `correr_dia_completo()` replica el ciclo de `correr_mes`: reunión al **abrir** el mes, cierre
@@ -226,9 +230,35 @@ Rama `main`, últimos commits (todo verificado: **104 tests + 45 smoke en verde*
    de las decisiones ya guardadas (un reinicio a mitad de mes no duplica ni pierde nada). Test
    nuevo en `test_engine.py`. Números de los 9 meses **intactos**.
 
-> **Interruptor de la pantalla:** el menú ☰ ya NO muestra los 11 paneles viejos. Si más adelante
-> se quiere volver a ofrecer alguno, alcanza con agregarlo en `frontend/src/components/MenuLateral.jsx`
-> (los componentes y las ramas de `contenidoPanel` en `App.jsx` ya existen).
+### 🌐 Bilingüe (ES/EN) + limpieza + Evolus afuera (sesión del 18 oct) ⏳ sin pushear
+
+Todo verificado: **77 tests + 46 smoke en verde**. Cambios:
+
+1. **Todo el sitio en INGLÉS** (base) + **botón ES/EN que cambia TODO** al español y vuelve.
+   Arquitectura: `backend/idioma.py` (`t("English", "español")`) y `frontend/src/i18n.js`
+   (mismo `t`). El backend guarda **una base por idioma**: `data/nexus.db` (inglés) y
+   `data/nexus_es.db` (español); `POST /api/idioma` cambia la base y el idioma de una; si hay un
+   día en vivo corriendo responde **409** (no corta la demo).
+2. **Traducido a ambos idiomas** todo lo que se ve: `redactor.py` (informes de los 4 sectores),
+   `sectores.py`, `facturas.py` (sello + comprobantes + auditoría), `calls.py` (motivos de fallo),
+   `agenda.py`, `gerente.py` (actas y avisos), `llm/mock.py` (TODOS los diálogos de los agentes),
+   `enjambre.py`, `simulation.py`, `api.py`, y todo el frontend (App, menú, paneles, película,
+   mapa, sala de agentes, franja AMD). Números formateados según idioma: `1,234.5` (EN) /
+   `1.234,5` (ES).
+3. **Evolus eliminado del código.** Se borró `backend/evolus/`, `backend/tests/test_evolus.py`,
+   `EVOLUS.md` y los docs viejos de `entrega/`. El **auditor de facturas se mantuvo por reglas**
+   en `engine/facturas.py` con **21 tests** (`test_facturas.py`).
+4. **Limpieza de paneles muertos del frontend**: se borraron 9 componentes que ya no se ofrecían
+   (Kpis, Escenario, Evolucion, Acta, Llamadas, AgenteVivo, DetalleDia, MetricasAMD, Cabecera).
+5. **⚠️ Bug de traducción corregido:** `gerente.py` mandaba `DIRECTIVE=` pero `mock.py` leía
+   `DIRECTIVA=` → el Gerente IA de prueba **nunca leía su directiva**. Ahora `mock.py` lee
+   `DIRECTIVE=`.
+6. **⚠️ Bug del modo día a día** ya corregido en el commit `72d8002` (ver arriba).
+
+> **Interruptor de la pantalla:** el menú ☰ muestra **solo los 4 sectores**. Si más adelante se
+> quiere volver a ofrecer algún panel viejo, alcanza con agregarlo en
+> `frontend/src/components/MenuLateral.jsx` (los componentes se borraron; habría que recuperarlos
+> de git).
 
 ---
 
@@ -244,15 +274,17 @@ Rama `main`, últimos commits (todo verificado: **104 tests + 45 smoke en verde*
 8. ✅ **Hecha:** Simulación por meses (6 solos + 3 a mano, con guardado en SQLite).
 9. 🟡 **EN CURSO →** Docker ✅ verificado el 14 oct (re-verificar tras abrir Docker Desktop) ·
    README que corra ✅ · **guion del video en inglés ✅ `PITCH.md`** · **slides ✅ `SLIDES.md`**.
-   **Hecho en la sesión del 17 oct:** rebranding completo, 4 sectores con informes, Evolus
-   conectado, franja AMD, fix del cierre mensual día a día (ver §6).
-   **Faltan:** deploy Render + Netlify, grabar el video, subir a GitHub **público**.
+   **Hecho en la sesión del 17 oct:** rebranding completo, 4 sectores con informes, franja AMD,
+   fix del cierre mensual día a día. **Hecho el 18 oct:** todo el sitio en inglés + **botón ES/EN**
+   que cambia TODO, Evolus eliminado (auditor de facturas por reglas), limpieza de paneles muertos
+   (ver §6).
+   **Faltan:** deploy final tras el push, grabar el video, subir todo al repo público.
    **Motor de AMD pendiente:** ver **§8** (checklist de retomada).
 
-> **⏸️ RETOMADA.** El 14 oct el trabajo quedó pausado a propósito; el **17 oct** se avanzó todo
-> lo que no dependía del autor (rebranding + sectores + Evolus + fix). **No hay bugs abiertos:
-> 104 tests + 45 smoke en verde.** Al volver, recorrer la checklist del §8 (lo que sí depende
-> del autor) y después seguir.
+> **⏸️ RETOMADA.** El 14 oct el trabajo quedó pausado a propósito; el **17–18 oct** se avanzó todo
+> lo que no dependía del autor (rebranding + sectores + **bilingüe ES/EN** + limpieza + Evolus
+> afuera + fix). **No hay bugs abiertos: 77 tests + 46 smoke en verde.** Al volver, recorrer la
+> checklist del §8 (lo que sí depende del autor) y después seguir.
 
 ### 📌 PENDIENTE DEL AUTOR (lo que NO puedo hacer yo)
 
@@ -260,10 +292,10 @@ Rama `main`, últimos commits (todo verificado: **104 tests + 45 smoke en verde*
    no lo pudo hacer porque el Docker estaba cerrado).
 2. **`gh auth login`** (punto 2 del §8) → crear el repo **público** y pushear `main`. **Yo ya
    dejé `main` al día y pusheado a `origin`** (el remote ya existe).
-3. **Claves / cuentas** (puntos 1, 3, 4 del §8): créditos AMD (GPU para Gemma), workspace de
-   Evolus desde el link del evento, cuentas de Render y Netlify.
+3. **Claves / cuentas** (puntos 1 y 4 del §8): créditos AMD (GPU para Gemma) y cuentas de Render
+   y Netlify.
    → Con esas claves, el cambio es **solo 3 variables de entorno** (`LLM_BASE_URL`, `LLM_MODEL`,
-   `USE_MOCK=false`) + (opcional) `EVOLUS_ENABLED=true` con su clave.
+   `USE_MOCK=false`).
 4. **Grabar el video** siguiendo `PITCH.md` (ya actualizado) y **armar los slides** con `SLIDES.md`.
 
 **Recorte de emergencia si falta tiempo:** primero el mapa animado, luego extras. NUNCA recortar
@@ -276,7 +308,7 @@ AMD, el envío ni el README.
 > **⚠️ INSTRUCCIÓN PARA LA PRÓXIMA SESIÓN:** el autor pidió que, al volver, se recorra
 > **esta lista completa punto por punto ANTES de escribir o modificar cualquier código.**
 > NO empezar por tareas nuevas. Primero la lista, después se continúa.
-> Trabajo **pausado a propósito** el 14 oct: no hay bug abierto, todo verde (104 tests + 45 smoke).
+> Trabajo **pausado a propósito** el 14 oct: no hay bug abierto, todo verde (77 tests + 46 smoke).
 
 ### 1. 🔴 AMD — créditos de Developer Cloud (es el freno de Gemma)
 **Qué mira el autor:** la cuenta AMD con la que se anotó a la hackathon. Buscar en el **correo**
@@ -289,7 +321,7 @@ nadie contestó todavía).
 asistente le arma una pregunta en inglés para el Discord.
 **Qué hace el asistente:** con el saldo, elegir la GPU; sin saldo, escalar por Discord.
 **Contexto:** TokenFactory quedó descartado (email no habilitado). **El motor será Gemma en una
-instancia GPU propia de AMD con vLLM.** El equipo de Evolus confirmó en el Discord que los
+instancia GPU propia de AMD con vLLM.** El equipo de la hackathon confirmó en el Discord que los
 agentes corren sobre *"your team's OpenAI-compatible endpoint (e.g. **vLLM on AMD Developer
 Cloud**)"* → **nuestro plan es exactamente el camino que recomiendan**.
 **Sin créditos no hay GPU → no hay Gemma.**
@@ -311,22 +343,15 @@ a Radeon Cloud; con la GPU solo se cambia a la URL de la instancia (p. ej. `/spa
 - **Qué hace el asistente:** crear el repo **PÚBLICO** y pushear `main`.
 - Su GitHub: **JoseMota0190**. Rama ya renombrada a `main` ✅.
 
-### 3. 🟠 Evolus — workspace DESDE el link oficial del evento (gratis)
-- **Trampa:** **NO** crearlo entrando derecho a `app.evolus.ai`. Ellos avisaron que un workspace
-  hecho por cuenta propia **antes del 12 oct no vale como workspace del evento**.
-- **Qué hace el autor:** encontrar en el **Discord o la web de Evolus** el **link oficial del
-  evento** (publicado desde el 12 oct) y crear el workspace desde ahí.
-- **Qué tiene que dar:** 50.000 créditos · gratis hasta **15 nov 2026 23:59 (hora italiana)** ·
-  hasta 6 integrantes · **Evolus Studio** (app de escritorio Win/Mac/Linux).
-  **Los llamados a nuestro modelo NO gastan créditos** (los de Evolus sí).
-- **Qué devuelve:** la **URL del workspace**.
-- **Qué hace el asistente:** verificar endpoints (AI Tools / Workflows) y conectar el modelo.
+### 3. ⚫ Evolus — ELIMINADO (evento cerrado)
+El código de evento (`AMDACT3`) ya cerró y no se consiguió workspace → se **borró** el módulo
+`backend/evolus/` y `EVOLUS.md`. El **auditor de facturas quedó, pero por reglas** (sin IA):
+`backend/engine/facturas.py` (+21 tests en `test_facturas.py`). **No hay nada que hacer acá.**
 
-### 4. 🟡 Hosting — Render + Netlify (cuentas)
-- **Qué hace el autor:** crear la cuenta con su correo: **Render** (`render.com`) y
-  **Netlify** (`netlify.com`).
-- **Qué hace el asistente:** el deploy (Render lee `render.yaml`; Netlify usa `frontend/` y hay
-  que editar la URL del backend en `netlify.toml`).
+### 4. 🟢 Hosting — Render + Netlify ✅ YA DEPLOYADO
+- **Hecho (18 oct):** `https://nexus-ops-ai.netlify.app` + `https://nexus-ops-ai-backend.onrender.com`.
+- **Falta (asistente):** el **push final**; Render y Netlify redeployan solos desde `main`.
+  (Render lee `render.yaml`; Netlify usa `frontend/` con la URL del backend en `frontend/netlify.toml`.)
 
 ### 5. 🟡 Discord — preguntas todavía sin contestar
 Ya mandó la consulta por el bloqueo de TokenFactory. **Faltan:**
@@ -334,7 +359,6 @@ Ya mandó la consulta por el bloqueo de TokenFactory. **Faltan:**
 - **¿Radeon Cloud cuenta como "AMD"** para el requisito de elegibilidad?
 - Hora exacta de **cierre domingo**.
 - Permiso de **audio con voz clonada** en el video.
-- Código de **evento Evolus**.
 
 ### 6. 🟢 Pendientes de más adelante
 - **Grabar el video** siguiendo `PITCH.md` (inglés + subtítulos).
@@ -348,9 +372,9 @@ Ya mandó la consulta por el bloqueo de TokenFactory. **Faltan:**
 Empresa "Nexus Alarm" · proyecto nexus-ops-ai · Python/FastAPI + React · SQLite · MIT ·
 **motor: Gemma servido por AMD** (TokenFactory descartado por bloqueo del email, 14 oct) ·
 **esperar a la GPU de Gemma y NO usar modelo interino** (frente si no hay créditos: modelo
-gratis del catálogo de Radeon Cloud, que corre sobre GPU de AMD) · Evolus extractor+workflow
-aislado, workspace creado **desde el link oficial del evento** · **sin auditor visual**
-(facturas con errores Monte Carlo para Evolus) · lead en vivo solo texto · **CON mapa animado**
+gratis del catálogo de Radeon Cloud, que corre sobre GPU de AMD) · **Evolus ELIMINADO (18 oct)**:
+el evento cerró; el auditor de facturas **quedó por reglas** (Monte Carlo + detección, sin IA) ·
+lead en vivo solo texto · **CON mapa animado**
 (primer corte si falta tiempo) · **solo ARCA simulado, NO hay "No Llame"** (todos los leads son de
 la web que pide ser llamado, sin llamada en frío) · 2 técnicos + 3 operadores arranque ·
 10 técnicos meta mes 9 · lunes a sábados · 3 turnos (9am/12pm/4pm) · ventas semana siguiente ·
@@ -358,11 +382,12 @@ la web que pide ser llamado, sin llamada en frío) · 2 técnicos + 3 operadores
 calcula + IA explica · gerente IA simulado · 6 meses solos + 3 manuales guardando · voz clonada
 con fallback real, slides en inglés · solo fase online · hosting free tier ·
 **repo PÚBLICO en GitHub + push autorizado** (renombrar `master` → `main` antes de subir) ·
-**menú ☰ = solo los 4 sectores** (Gerencia · Ventas · Agenda y técnicos · Facturación; los
-paneles viejos quedan en el código, ocultos del menú, NO borrados) · **informe mensual de cada
-sector = programa calcula → IA de AMD analiza → Evolus redacta → respaldo local** (los 6 meses
-precargados se siembran con el redactor local, sin red ni créditos) · **Evolus CONECTADO** como
-redactor (`EVOLUS_ENABLED`/`EVOLUS_API_KEY` por `.env`; sin clave = modo prueba) · **franja AMD
+**menú ☰ = solo los 4 sectores** (Management · Sales · Scheduling & technicians · Billing; los
+paneles viejos se **borraron** en la limpieza del 18 oct) · **informe mensual de cada
+sector = programa calcula → IA de AMD analiza → redactor local arma el documento** (los 6 meses
+precargados se siembran con el redactor local, sin red ni créditos) · **sitio BILINGÜE: inglés por
+defecto + botón ES/EN que cambia TODO** (una base SQLite por idioma; `POST /api/idioma`; los textos
+viven en `backend/idioma.py` y `frontend/src/i18n.js`) · **franja AMD
 al pie, siempre visible** · **Sala de Agentes dentro del cuadro de simulación** · **simulación
 solo día a día** (el mes se cierra solo) · mapa CABA real de 48 barrios + logo al centro.
 

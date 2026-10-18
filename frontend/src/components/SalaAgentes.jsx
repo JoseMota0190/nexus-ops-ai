@@ -1,24 +1,27 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api.js";
+import { t, useIdioma } from "../i18n.js";
 
 /**
- * La SALA DE AGENTES: el cuarto donde los agentes de IA negocian CADA venta
- * del día. El teleoperador cierra la venta y le pide un turno al coordinador de
- * agenda; la agenda elige el día y la hora de la pizarra; y el coordinador de
- * técnicos decide a quién mandar. El PROGRAMA es el árbitro: los agentes eligen
- * de las opciones válidas, nunca inventan un turno.
+ * The AGENT ROOM: the room where the AI agents negotiate EVERY sale of the day.
+ * The telemarketer closes the sale and asks the scheduling coordinator for a
+ * slot; the schedule picks the day and time from the board; and the technician
+ * coordinator decides who to send. The PROGRAM is the referee: the agents pick
+ * from valid options, they never invent a slot.
  *
- * Acá se ve la charla tal cual quedó guardada en la base (lo que realmente dijo
- * el modelo que corre sobre AMD). No es un resumen: es el diálogo, venta por venta.
+ * Here you see the chat exactly as it was stored in the database (what the model
+ * running on AMD really said). It is not a summary: it is the dialogue, sale by sale.
  */
 
-const AGENTES = {
-  operador: { nombre: "Teleoperador", icono: "📞", tono: "op" },
-  agenda: { nombre: "Coordinador de agenda", icono: "📅", tono: "ag" },
-  tecnicos: { nombre: "Coordinador de técnicos", icono: "🔧", tono: "te" },
-};
+function agentes() {
+  return {
+    operador: { nombre: t("Telemarketer", "Teleoperador"), icono: "📞", tono: "op" },
+    agenda: { nombre: t("Scheduling coordinator", "Coordinador de agenda"), icono: "📅", tono: "ag" },
+    tecnicos: { nombre: t("Technician coordinator", "Coordinador de técnicos"), icono: "🔧", tono: "te" },
+  };
+}
 
-function agrupar(lineas) {  // Cada conversación arranca cuando habla el teleoperador (proponer la venta).
+function agrupar(lineas) {  // Each conversation starts when the telemarketer speaks (proposing the sale).
   const charlas = [];
   let actual = null;
   for (const l of lineas) {
@@ -28,10 +31,11 @@ function agrupar(lineas) {  // Cada conversación arranca cuando habla el teleop
     }
     actual.lineas.push(l);
   }
-  return charlas.reverse(); // la más reciente, arriba
+  return charlas.reverse(); // the most recent one, on top
 }
 
 export default function SalaAgentes({ estado, refrescoMs = 0 }) {
+  useIdioma();
   const [lineas, setLineas] = useState(null);
   const [error, setError] = useState(null);
   const [refrescando, setRefrescando] = useState(false);
@@ -53,15 +57,16 @@ export default function SalaAgentes({ estado, refrescoMs = 0 }) {
     traer();
   }, [traer]);
 
-  // En el DÍA EN VIVO, la sala se refresca sola para que las burbujas aparezcan.
+  // In the LIVE DAY, the room refreshes itself so the bubbles keep appearing.
   useEffect(() => {
     if (!refrescoMs) return undefined;
-    const t = setInterval(traer, refrescoMs);
-    return () => clearInterval(t);
+    const timer = setInterval(traer, refrescoMs);
+    return () => clearInterval(timer);
   }, [traer, refrescoMs]);
 
   const enjambre = estado?.enjambre;
   const activo = enjambre ? enjambre.activo : null;
+  const AGENTES = agentes();
 
   return (
     <div className="sala">
@@ -71,16 +76,18 @@ export default function SalaAgentes({ estado, refrescoMs = 0 }) {
             <span className="sala-pill">—</span>
           ) : activo ? (
             <span className="sala-pill sala-on">
-              <i className="sala-punto" /> En vivo · negociando venta por venta
+              <i className="sala-punto" /> {t("Live · negotiating sale by sale",
+                                               "En vivo · negociando venta por venta")}
             </span>
           ) : (
             <span className="sala-pill sala-off">
-              Modo rápido: los días corren sin charla (se prende desde el menú)
+              {t("Fast mode: the days run without chat (turn it on from the menu)",
+                 "Modo rápido: los días corren sin charla (prendelo desde el menú)")}
             </span>
           )}
         </div>
         <button className="dia-chip" onClick={traer} disabled={refrescando}>
-          {refrescando ? "Actualizando…" : "↻ Actualizar"}
+          {refrescando ? t("Refreshing…", "Refrescando…") : t("↻ Refresh", "↻ Refrescar")}
         </button>
       </div>
 
@@ -92,11 +99,13 @@ export default function SalaAgentes({ estado, refrescoMs = 0 }) {
       ) : null}
 
       {!lineas ? (
-        <div className="sin-datos">Entrando a la sala de agentes…</div>
+        <div className="sin-datos">{t("Entering the agent room…", "Entrando a la sala de agentes…")}</div>
       ) : lineas.length === 0 ? (
         <div className="sin-datos">
-          Todavía no hay charla. Corré un día en <b>modo sala</b> (a partir del mes 7) y
-          acá vas a ver a los agentes negociando cada venta.
+          {t("No chat yet. Run a day in ", "Todavía no hay charla. Corré un día en modo ")}
+          <b>{t("live room", "sala en vivo")}</b>
+          {t(" mode (from month 7 on) and here you'll see the agents negotiating every sale.",
+             " (desde el mes 7) y acá vas a ver a los agentes negociando cada venta.")}
         </div>
       ) : (
         <div className="sala-charlas">
@@ -106,7 +115,8 @@ export default function SalaAgentes({ estado, refrescoMs = 0 }) {
                 <b>{ch.cliente}</b>
                 <span>
                   {ch.lineas[0]?.mes !== undefined
-                    ? `Mes ${ch.lineas[0].mes} · Semana ${ch.lineas[0].semana}`
+                    ? t(`Month ${ch.lineas[0].mes} · Week ${ch.lineas[0].semana}`,
+                        `Mes ${ch.lineas[0].mes} · Semana ${ch.lineas[0].semana}`)
                     : ""}
                 </span>
               </div>

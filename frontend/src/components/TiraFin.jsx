@@ -1,12 +1,14 @@
 import Logo from "./Logo.jsx";
+import { t } from "../i18n.js";
 
 /**
- * La tira de arriba: la marca y, a la derecha, el botón del menú ☰.
+ * The top strip: the brand, the ES/EN language button and, on the right, the ☰
+ * menu button.
  *
- * A propósito NO muestra números: las métricas viven en los paneles que abre el
- * menú (KPIs, evolución, agenda, mapa…). Así la pantalla de inicio queda limpia.
+ * It deliberately shows NO numbers: the metrics live in the panels the menu
+ * opens (the 4 sectors). That keeps the home screen clean.
  */
-export default function TiraFin({ usuario, corriendo, onMenu, menuAbierto }) {
+export default function TiraFin({ usuario, corriendo, onMenu, menuAbierto, idioma, onIdioma }) {
   return (
     <header className="tira">
       <div className="tira-marca">
@@ -18,21 +20,40 @@ export default function TiraFin({ usuario, corriendo, onMenu, menuAbierto }) {
 
       <div className="tira-der">
         {corriendo ? (
-          <span className="tira-quien" title="Se está corriendo la simulación ahora">
+          <span className="tira-quien"
+                title={t("The simulation is running right now",
+                         "La simulación está corriendo ahora mismo")}>
             <i className="tira-punto" />
             {corriendo}
           </span>
         ) : usuario ? (
-          <span className="tira-usuario" title="Usted está a cargo">
+          <span className="tira-usuario" title={t("You are in charge", "Estás al mando")}>
             {usuario}
           </span>
         ) : null}
 
+        <div className="tira-idioma" role="group" aria-label={t("Language", "Idioma")}>
+          <button
+            className={`idioma-chip ${idioma === "en" ? "activo" : ""}`}
+            onClick={() => onIdioma?.("en")}
+            title={t("See the site in English", "Ver el sitio en inglés")}
+          >
+            EN
+          </button>
+          <button
+            className={`idioma-chip ${idioma === "es" ? "activo" : ""}`}
+            onClick={() => onIdioma?.("es")}
+            title={t("See the site in Spanish", "Ver el sitio en español")}
+          >
+            ES
+          </button>
+        </div>
+
         <button
           className={`tira-menu ${menuAbierto ? "activo" : ""}`}
           onClick={onMenu}
-          aria-label="Abrir el menú de paneles"
-          title="Métricas y paneles"
+          aria-label={t("Open the panels menu", "Abrir el menú de paneles")}
+          title={t("Metrics and panels", "Métricas y paneles")}
         >
           ☰
         </button>

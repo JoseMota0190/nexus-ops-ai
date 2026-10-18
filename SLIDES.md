@@ -72,8 +72,9 @@ Fast, cheap, reproducible — and the agents still speak for real.
 - **Animated map of Buenos Aires** filling the screen, with the Nexus logo breathing at its center
 - A simulation strip: **run a day** and watch the agents negotiate in the **live Agents Room**
 - A **☰ menu with 4 sectors** — management, sales, scheduling, billing — that **report themselves** every month
-- Each report: **AMD analyzes, Evolus writes**, and the numbers behind it
+- Each report: **AMD analyzes, the writer turns it into a document**, and the numbers behind it
 - An always-on **AMD strip** at the bottom: latency, tokens/s, fallbacks
+- An **ES / EN button** that flips the whole site — interface, reports and invoices
 
 ---
 
@@ -114,7 +115,7 @@ because the manager improves conversion, not just headcount.
 
 ---
 
-## SLIDE 8 — AMD + Evolus
+## SLIDE 8 — AMD & the 4 sectors
 
 **The brain runs on an open model served on AMD**
 
@@ -123,7 +124,7 @@ because the manager improves conversion, not just headcount.
 - If the endpoint fails, the system **degrades gracefully and reports it** (counted as "fallbacks")
 
 **The business reports to 4 sectors.** Each month: the program computes the
-numbers, **AMD's model analyzes them, Evolus writes the report** — with a local
+numbers, **AMD's model analyzes them and the report is written** — with a local
 writer as a safety net.
 
 **The forecast is Monte Carlo, not the language model.**

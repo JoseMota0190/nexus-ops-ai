@@ -23,6 +23,8 @@ from store import Store
 
 from engine import Simulacion, ZONAS
 from engine import sectores as sectores_agentes
+from engine.facturas import sello
+from idioma import set_idioma, t
 from engine.business import (
     DIAS_POR_SEMANA,
     MESES_AUTOMATICOS,
@@ -49,22 +51,63 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-store = Store(DATA)
 llm = LLMClient()
-sim = Simulacion(store, llm)
 
-# Evolus (opcional y aislado): si el módulo está sano, conectamos sus puertas
-# (/api/evolus/...). Va en try/except para que un problema del módulo NUNCA
-# tumbe el motor principal.
-EVOLUS_CONECTADO = False
-try:
-    from evolus import router as evolus_router
+# ------------------------------------------------------------------ idiomas
+# El sitio habla inglés y español. Cada idioma tiene su PROPIA base (así el avance
+# de uno no pisa al otro) y su propia simulación. El botón ES/EN llama a
+# `POST /api/idioma` y desde ahí todo se lee de la base del idioma elegido.
+_IDIOMA = "en"
+_MUNDOS: dict[str, "tuple[Store, Simulacion]"] = {}
 
-    app.include_router(evolus_router)
-    EVOLUS_CONECTADO = True
-except Exception:  # noqa: BLE001
-    import logging
-    logging.getLogger("nexus.api").exception("No se pudo conectar el módulo Evolus")
+
+def _ruta_db(lang: str) -> Path:
+    """La base de un idioma (la inglesa es la histórica `nexus.db`)."""
+    if lang == "en":
+        return DATA
+    return DATA.with_name(f"{DATA.stem}_{lang}{DATA.suffix}")
+
+
+def _construir_mundo(lang: str) -> "tuple[Store, Simulacion]":
+    """Levanta (o crea) el "mundo" de un idioma: su base + su simulación.
+
+    La primera vez corre solo los primeros 6 meses, sembrados con el motor LOCAL
+    (sin red ni créditos), para que el arranque sea en segundos.
+
+    Red de seguridad: si la siembra truena (cerebro caído, JSON inesperado, lo que
+    sea), el programa NO se apaga. Se anota el error y la API sigue viva con la
+    base que haya — una demo a medio cargar siempre es mejor que una pantalla en
+    blanco frente a un jurado.
+    """
+    set_idioma(lang)
+    st = Store(_ruta_db(lang))
+    sm = Simulacion(st, llm)
+    sm.enjambre_desde = 7
+    sm.inicializar()
+    if not st.conn.execute("SELECT 1 FROM resumen_mes LIMIT 1").fetchone():
+        try:
+            llm_real = sm.llm
+            sm.llm = LLMClient(config=LLMConfig(use_mock=True, model="mock"))
+            sm.reportes_con_ia = False  # la siembra escribe los informes localmente
+            try:
+                sm.correr_todo(MESES_AUTOMATICOS)
+            finally:
+                sm.llm = llm_real
+                sm.reportes_con_ia = True
+        except Exception as exc:  # noqa: BLE001 — nada debe apagar el arranque
+            import logging
+            logging.getLogger("nexus.api").exception(
+                "La siembra de los primeros %s meses falló; se arranca igual: %s",
+                MESES_AUTOMATICOS, exc)
+    try:
+        sectores_agentes.asegurar_informes(st)
+        sm.reportes_con_ia = True
+    except Exception:  # noqa: BLE001
+        import logging
+        logging.getLogger("nexus.api").exception(
+            "No se pudieron asegurar los informes de sector")
+    return st, sm
+
 
 # El DÍA EN VIVO: el que corre en segundo plano, negociando venta por venta, para
 # que la pantalla vea a los agentes hablar mientras piensan (AMD tarda ~15 s por
@@ -77,49 +120,16 @@ _DIA: dict = {"corriendo": False, "listo": False, "error": None, "resultado": No
 def _dia_ocupado_o_409(accion: str) -> None:
     if _DIA["corriendo"]:
         raise HTTPException(
-            409, f"Hay un día corriendo en vivo. Esperá a que termine para {accion}.")
+            409, t(f"A day is already running live. Wait for it to finish to {accion}.",
+                   f"Ya hay un día corriendo en vivo. Esperá a que termine para {accion}."))
 
 
-sim.inicializar()
-# Primera vez que arranca (base recién creada) → corren solos los primeros 6 meses,
-# como quedó decidido. Los 3 últimos los mueve el dueño con "Avanzar 1 mes".
-#
-# Red de seguridad: si la siembra truena (cerebro caído, JSON inesperado, lo que
-# sea), el programa NO se apaga. Se anota el error y la API sigue viva con la
-# base que haya — una demo a medio cargar siempre es mejor que una pantalla en
-# blanco frente a un jurado.
-if not store.conn.execute("SELECT 1 FROM resumen_mes LIMIT 1").fetchone():
-    try:
-        # La SEMILLA de los 6 meses corre con el motor LOCAL: es historia
-        # precargada y queremos que el arranque sea en segundos (Render corta los
-        # arranques lentos y el plan gratis no guarda la base). AMD se usa en TODO
-        # lo que pasa EN VIVO: la Sala de Agentes del mes 7 en adelante, las
-        # reuniones del gerente y la llamada en vivo.
-        llm_real = sim.llm
-        sim.llm = LLMClient(config=LLMConfig(use_mock=True, model="mock"))
-        sim.reportes_con_ia = False  # la siembra escribe los informes localmente
-        try:
-            sim.correr_todo(MESES_AUTOMATICOS)
-        finally:
-            sim.llm = llm_real
-            sim.reportes_con_ia = True
-    except Exception as exc:  # noqa: BLE001 — nada debe apagar el arranque
-        import logging
-        logging.getLogger("nexus.api").exception(
-            "La siembra de los primeros %s meses falló; se arranca igual: %s",
-            MESES_AUTOMATICOS, exc)
-# Red de seguridad de los informes de sector: si a algún mes ya corrido le falta
-# su informe (p. ej. una base vieja), se lo escribe con el redactor local.
-try:
-    sectores_agentes.asegurar_informes(store)
-    sim.reportes_con_ia = True
-except Exception:  # noqa: BLE001
-    import logging
-    logging.getLogger("nexus.api").exception("No se pudieron asegurar los informes de sector")
+# Arranca el mundo INGLÉS (el que ve el jurado por defecto). El español se arma
+# la primera vez que alguien toca el botón ES.
+store, sim = _construir_mundo("en")
+_MUNDOS["en"] = (store, sim)
+
 _rng = random.Random(2026)
-# Los primeros 6 meses quedan precargados con el algoritmo rápido; del 7 en
-# adelante la agenda la negocian los agentes en la SALA DEL ENJAMBRE.
-sim.enjambre_desde = 7
 
 
 class Vacio(BaseModel):
@@ -129,6 +139,11 @@ class Vacio(BaseModel):
 class ModoSim(BaseModel):
     """Interruptor del modo: rápido (sin charla) o sala (los agentes negocian)."""
     rapido: bool = False
+
+
+class Idioma(BaseModel):
+    """Idioma de la pantalla: 'en' (inglés) o 'es' (español)."""
+    lang: str = "en"
 
 
 # ------------------------------------------------------------------ estado
@@ -151,7 +166,8 @@ def motivos() -> dict:
     """Motivos agregados de todo el log de llamadas."""
     filas = store.conn.execute(
         "SELECT motivo, COUNT(*) AS n FROM llamadas WHERE atendio = 1 "
-        "AND motivo <> 'Cerró la venta' GROUP BY motivo ORDER BY n DESC").fetchall()
+        "AND motivo <> ? GROUP BY motivo ORDER BY n DESC",
+        (t("Closed the sale", "Cerró la venta"),)).fetchall()
     sin_responder = store.conn.execute(
         "SELECT motivo, COUNT(*) AS n FROM llamadas WHERE atendio = 0 "
         "GROUP BY motivo ORDER BY n DESC").fetchall()
@@ -183,14 +199,14 @@ def avanzar_mes() -> dict:
     La app no tiene tope de meses: pasada la meta, la empresa se ESTABILIZA y
     sigue operando (el Gerente deja de contratar sin control).
     """
-    _dia_ocupado_o_409("correr un mes")
+    _dia_ocupado_o_409("run a month")
     return sim.correr_mes()
 
 
 @app.post("/api/todo")
 def correr_todo(meses: int = 6) -> dict:
     """Corre de una los primeros `meses` (la fase automática: 6 meses solos)."""
-    _dia_ocupado_o_409("correr varios meses")
+    _dia_ocupado_o_409("run several months")
     salidas = []
     for _ in range(max(0, meses)):
         salidas.append(sim.correr_mes())
@@ -203,7 +219,7 @@ def correr_un_dia() -> dict:
     """Corre un día. Cuando se acaba la última semana del mes, el mes se cierra
     solo: reunión del Gerente (al abrir), informes de los 4 sectores e ingresos
     recurrentes (al cerrar). Sin tope: se puede seguir día por día indefinidamente."""
-    _dia_ocupado_o_409("correr un día")
+    _dia_ocupado_o_409("run a day")
     return sim.correr_dia_completo()
 
 
@@ -218,7 +234,7 @@ def dia_en_vivo() -> dict:
     """
     with _DIA_LOCK:
         if _DIA["corriendo"]:
-            raise HTTPException(409, "Ya hay un día corriendo en vivo.")
+            raise HTTPException(409, "A day is already running live.")
         _DIA.update({"corriendo": True, "listo": False, "error": None,
                      "resultado": None})
 
@@ -262,10 +278,31 @@ def modo(m: ModoSim) -> dict:
 
 @app.post("/api/reiniciar")
 def reiniciar() -> dict:
-    _dia_ocupado_o_409("reiniciar")
+    _dia_ocupado_o_409("reset")
     sim.empresa = sim.inicializar(reiniciar=True)
     sim.enjambre_desde = 7
     return sim.estado()
+
+
+@app.post("/api/idioma")
+def cambiar_idioma(body: Idioma) -> dict:
+    """Cambia el idioma del sitio (inglés / español) y de qué base se lee.
+
+    La primera vez que se elige español se arma su base (los 6 meses sembrados,
+    con el motor local) y queda guardada. El avance de cada idioma es
+    independiente: pasar a español y volver a inglés no pierde nada.
+    """
+    global store, sim, _IDIOMA
+    lang = body.lang if body.lang in ("en", "es") else "en"
+    if lang == _IDIOMA:
+        return {"idioma": _IDIOMA}
+    _dia_ocupado_o_409("change the language")
+    if lang not in _MUNDOS:
+        _MUNDOS[lang] = _construir_mundo(lang)
+    store, sim = _MUNDOS[lang]
+    set_idioma(lang)
+    _IDIOMA = lang
+    return {"idioma": _IDIOMA, "estado": sim.estado()}
 
 
 # ---------------------------------------------------------- actas / log
@@ -341,15 +378,15 @@ def _mes_informe(mes: int | None) -> int:
 def sector_detalle(sector: str, mes: int | None = None) -> dict:
     """El informe de un sector (informe + números + historial)."""
     if not sectores_agentes.es_sector(sector):
-        raise HTTPException(404, f"Sector desconocido: {sector}")
+        raise HTTPException(404, f"Unknown sector: {sector}")
     return sectores_agentes.detalle(store, sector, _mes_informe(mes))
 
 
 @app.post("/api/sectores/{sector}/generar")
 def sector_generar(sector: str, mes: int | None = None) -> dict:
-    """Vuelve a generar el informe del sector (IA + Evolus si están)."""
+    """Vuelve a generar el informe del sector (IA si está)."""
     if not sectores_agentes.es_sector(sector):
-        raise HTTPException(404, f"Sector desconocido: {sector}")
+        raise HTTPException(404, f"Unknown sector: {sector}")
     m = _mes_informe(mes)
     usar_ia = not get_config().use_mock
     return sectores_agentes.generar_informe(store, llm, sector, m, usar_ia=usar_ia)
@@ -364,7 +401,7 @@ def facturacion(mes: int | None = None) -> dict:
         "mes": m,
         "metricas": sectores_agentes.metricas_de_sector(store, m, "facturacion"),
         "facturas": sectores_agentes.facturas_del_mes(m),
-        "sello": "SIMULADO – SIN VALIDEZ FISCAL",
+        "sello": sello(),
     }
 
 
@@ -396,12 +433,15 @@ def llamada_en_vivo() -> dict:
 
     mensajes_llamada = [
         {"role": "system",
-         "content": "Sos teleoperador de Nexus Alarm, empresa de alarmas en CABA. "
-                    "Hablás en español rioplatense, corto y amable."},
+         "content": t("You are a telemarketer at Nexus Alarm, an alarm company in "
+                      "Buenos Aires (CABA). You speak briefly and kindly.",
+                      "Sos teleoperador de Nexus Alarm, empresa de alarmas en CABA. "
+                      "Hablás en español rioplatense, corto y amable.")},
         {"role": "user",
          "content": (f"{fila['nombre']} ({fila['telefono']}), {fila['barrio']}, "
                      f"{fila['direccion'] if 'direccion' in fila.keys() else ''}. "
-                     "Hola, me llegó su formulario. ¿Qué tipo de alarma le interesa?")},
+                     + t("Hi, I got your form. What kind of alarm are you interested in?",
+                         "Hola, me llegó su formulario. ¿Qué tipo de alarma le interesa?"))},
     ]
     resp = llm.complete(agent="teleoperador", messages=mensajes_llamada,
                         schema=TeleoperadorResponse)

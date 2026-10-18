@@ -1,18 +1,20 @@
 import { num } from "../format.js";
+import { t, useIdioma } from "../i18n.js";
 
 /**
- * La FRANJA AMD: una tira finita, siempre visible abajo, con la salud del
- * cerebro (el modelo que corre sobre AMD) y del redactor (Evolus). No ocupa
- * lugar en el menú: se mira de reojo mientras corre la simulación.
+ * The AMD STRIP: a thin bar, always visible at the bottom, with the health of
+ * the brain (the model running on AMD). It takes no room in the menu: you
+ * glance at it while the simulation runs.
  */
-export default function FranjaAMD({ metricas, evolus }) {
+export default function FranjaAMD({ metricas }) {
+  useIdioma();
   const m = metricas || {};
   const real = m.modo_mock === false;
   const respaldos = m.fallback_calls ?? 0;
-  const evolusModo = evolus ? (evolus.mock ? "prueba" : "real") : "—";
 
   return (
-    <div className="franja-amd" role="status" aria-label="Estado del cerebro AMD">
+    <div className="franja-amd" role="status"
+         aria-label={t("AMD brain status", "Estado del cerebro AMD")}>
       <span className="franja-amd-tag">🧠 AMD</span>
       <span className={`franja-amd-punto ${real ? "on" : "off"}`} />
       <span className="franja-amd-item">
@@ -20,7 +22,7 @@ export default function FranjaAMD({ metricas, evolus }) {
       </span>
       <span className="franja-amd-sep" />
       <span className="franja-amd-item">
-        {real ? "en red" : "modo prueba"}
+        {real ? t("online", "en línea") : t("test mode", "modo prueba")}
       </span>
       <span className="franja-amd-sep" />
       <span className="franja-amd-item">
@@ -34,14 +36,10 @@ export default function FranjaAMD({ metricas, evolus }) {
       </span>
       <span className="franja-amd-sep" />
       <span className="franja-amd-item">
-        <b>{num(m.total_calls ?? 0)}</b> llamadas
+        <b>{num(m.total_calls ?? 0)}</b> {t("calls", "llamadas")}
       </span>
       <span className="franja-amd-item">
-        respaldos <b>{num(respaldos)}</b>
-      </span>
-      <span className="franja-amd-sep" />
-      <span className="franja-amd-item">
-        ✍️ Evolus <b>{evolusModo}</b>
+        {t("fallbacks", "respaldos")} <b>{num(respaldos)}</b>
       </span>
     </div>
   );

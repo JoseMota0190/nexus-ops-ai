@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api.js";
+import { t, useIdioma } from "../i18n.js";
 
 /**
- * El panel de un SECTOR: muestra el informe que produjo su agente al cerrar el
- * mes (AMD analiza los números, Evolus redacta el documento y, si no está, lo
- * escribe el redactor local). También muestra los números del mes, el historial
- * y —en Facturación— los comprobantes simulados con su auditoría.
+ * The panel of a SECTOR: it shows the report its agent produced when the month
+ * closed (AMD analyzes the numbers, the local writer turns them into a
+ * document). It also shows the month's numbers, the history and — in Billing —
+ * the simulated invoices with their audit.
  */
 
 const COLORES = {
@@ -15,28 +16,27 @@ const COLORES = {
   cyan: "#22d3ee",
 };
 
-const SEMAFORO = {
-  verde: { emoji: "🟢", texto: "todo en orden" },
-  ambar: { emoji: "🟡", texto: "ojo con esto" },
-  rojo: { emoji: "🔴", texto: "requiere atención" },
-};
+function semaforos() {
+  return {
+    verde: { emoji: "🟢", texto: t("all good", "todo bien") },
+    ambar: { emoji: "🟡", texto: t("watch this", "ojo con esto") },
+    rojo: { emoji: "🔴", texto: t("needs attention", "necesita atención") },
+  };
+}
 
 function Fuente({ informe }) {
   if (!informe?.fuente) return null;
   const ia = informe.fuente === "ia";
   const mock = informe.fuente === "mock";
-  const evolus = informe.redactor === "evolus";
   const cerebrito = ia
-    ? { texto: "🧠 Analizó la IA (AMD)", clase: "etiqueta-verde" }
+    ? { texto: t("🧠 Analyzed by the AI (AMD)", "🧠 Analizado por la IA (AMD)"), clase: "etiqueta-verde" }
     : mock
-      ? { texto: "🧠 IA en modo prueba", clase: "etiqueta-ambar" }
-      : { texto: "📝 Redactor local", clase: "etiqueta-azul" };
+      ? { texto: t("🧠 AI in test mode", "🧠 IA en modo prueba"), clase: "etiqueta-ambar" }
+      : { texto: t("📝 Local writer", "📝 Redactor local"), clase: "etiqueta-azul" };
   return (
     <div className="sector-fuentes">
       <span className={`etiqueta ${cerebrito.clase}`}>{cerebrito.texto}</span>
-      <span className={`etiqueta ${evolus ? "etiqueta-violeta" : "etiqueta-azul"}`}>
-        {evolus ? "✍️ Redactó Evolus" : "✍️ Redacción local"}
-      </span>
+      <span className="etiqueta etiqueta-azul">{t("✍️ Written locally", "✍️ Redactado localmente")}</span>
     </div>
   );
 }
@@ -45,10 +45,12 @@ function Facturas({ facturas }) {
   if (!facturas?.length) return null;
   return (
     <div className="sector-bloque">
-      <h3 className="sector-sub">Comprobantes simulados y auditoría</h3>
+      <h3 className="sector-sub">{t("Simulated invoices and auditing",
+                                    "Comprobantes simulados y auditoría")}</h3>
       <p className="sector-nota">
-        Facturas generadas con defectos a propósito (Monte Carlo) y leídas por el
-        extractor. <b>SIMULADO – SIN VALIDEZ FISCAL.</b>
+        {t("Invoices generated with defects on purpose (Monte Carlo) and read by the local reader.",
+           "Comprobantes generados con errores a propósito (Monte Carlo) y leídos por el lector local.")}{" "}
+        <b>{t("SIMULATED – NO FISCAL VALIDITY.", "SIMULADO – SIN VALIDEZ FISCAL.")}</b>
       </p>
       <div className="facturas-lista">
         {facturas.map((f) => {
@@ -67,12 +69,12 @@ function Facturas({ facturas }) {
                         : "factura-ok"
                   }`}
                 >
-                  {detectados} {detectados === 1 ? "defecto" : "defectos"}
+                  {detectados} {detectados === 1 ? t("defect", "defecto") : t("defects", "defectos")}
                 </span>
               </div>
               <div className="factura-detalle">
                 {f.obtenido?.razon_social || "—"} ·{" "}
-                {f.obtenido?.total != null ? `Total ${f.obtenido.total}` : "sin total"}
+                {f.obtenido?.total != null ? `Total ${f.obtenido.total}` : t("no total", "sin total")}
               </div>
               {f.errores_detectados?.length ? (
                 <ul className="factura-errores">
@@ -81,7 +83,7 @@ function Facturas({ facturas }) {
                   ))}
                 </ul>
               ) : (
-                <div className="factura-ok-texto">Sin defectos detectados.</div>
+                <div className="factura-ok-texto">{t("No defects detected.", "No se detectaron defectos.")}</div>
               )}
             </div>
           );
@@ -92,6 +94,7 @@ function Facturas({ facturas }) {
 }
 
 export default function SectorPanel({ sector, mesInicial }) {
+  useIdioma();
   const [informe, setInforme] = useState(null);
   const [mes, setMes] = useState(mesInicial ?? null);
   const [error, setError] = useState(null);
@@ -144,10 +147,11 @@ export default function SectorPanel({ sector, mesInicial }) {
     );
   }
   if (cargando && !informe) {
-    return <div className="cargando">Abriendo el informe del sector…</div>;
+    return <div className="cargando">{t("Opening the sector report…", "Abriendo el informe del sector…")}</div>;
   }
   if (!informe) return null;
 
+  const SEMAFORO = semaforos();
   const sem = SEMAFORO[informe.semaforo] || SEMAFORO.verde;
 
   return (
@@ -162,10 +166,12 @@ export default function SectorPanel({ sector, mesInicial }) {
                 <span className="sector-semaforo">
                   {sem.emoji} {sem.texto}
                 </span>
-                <span className="sector-mes-num">Mes {informe.mes}</span>
+                <span className="sector-mes-num">{t("Month", "Mes")} {informe.mes}</span>
               </>
             ) : (
-              <span className="sector-mes-num">Sin informe del mes {informe.mes}</span>
+              <span className="sector-mes-num">
+                {t(`No report for month ${informe.mes}`, `Sin informe del mes ${informe.mes}`)}
+              </span>
             )}
           </div>
         </div>
@@ -173,9 +179,10 @@ export default function SectorPanel({ sector, mesInicial }) {
           className="dia-chip sector-regen"
           onClick={regenerar}
           disabled={generando}
-          title="El agente vuelve a analizar y redactar el informe"
+          title={t("The agent re-analyzes and rewrites the report",
+                   "El agente vuelve a analizar y redactar el informe")}
         >
-          {generando ? "Escribiendo…" : "↻ Regenerar"}
+          {generando ? t("Writing…", "Redactando…") : t("↻ Regenerate", "↻ Regenerar")}
         </button>
       </div>
 
@@ -183,8 +190,8 @@ export default function SectorPanel({ sector, mesInicial }) {
 
       {!informe.tiene_informe ? (
         <div className="sin-datos">
-          Todavía no hay informe de este sector para el mes {informe.mes}. Corré el
-          mes y el agente lo escribe solo.
+          {t(`There is no report for this sector yet for month ${informe.mes}. Run the month and the agent writes it automatically.`,
+             `Todavía no hay informe de este sector para el mes ${informe.mes}. Corré el mes y el agente lo escribe solo.`)}
         </div>
       ) : (
         <>
@@ -218,14 +225,14 @@ export default function SectorPanel({ sector, mesInicial }) {
 
           {informe.recomendacion ? (
             <div className="sector-recomendacion">
-              <span className="sector-reco-etq">Recomendación</span>
+              <span className="sector-reco-etq">{t("Recommendation", "Recomendación")}</span>
               <p>{informe.recomendacion}</p>
             </div>
           ) : null}
 
           {informe.documento ? (
             <details className="sector-doc">
-              <summary>Ver el documento completo</summary>
+              <summary>{t("See the full document", "Ver el documento completo")}</summary>
               <pre>{informe.documento}</pre>
             </details>
           ) : null}
@@ -238,7 +245,7 @@ export default function SectorPanel({ sector, mesInicial }) {
 
       {informe.historial?.length ? (
         <div className="sector-bloque">
-          <h3 className="sector-sub">Historial de informes</h3>
+          <h3 className="sector-sub">{t("Report history", "Historial de informes")}</h3>
           <div className="sector-historial">
             {informe.historial.map((h) => (
               <button
@@ -246,7 +253,7 @@ export default function SectorPanel({ sector, mesInicial }) {
                 className={`dia-chip ${h.mes === informe.mes ? "activo" : ""}`}
                 onClick={() => setMes(h.mes)}
               >
-                {(SEMAFORO[h.semaforo] || {}).emoji || "🟢"} Mes {h.mes}
+                {(SEMAFORO[h.semaforo] || {}).emoji || "🟢"} {t("Month", "Mes")} {h.mes}
               </button>
             ))}
           </div>

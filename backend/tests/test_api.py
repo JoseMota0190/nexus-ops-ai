@@ -136,7 +136,7 @@ def test_facturacion_comprobantes_simulados():
     """La facturación trae comprobantes simulados y su auditoría (sin red)."""
     client.post("/api/mes")
     d = client.get("/api/facturacion").json()
-    assert d["sello"] == "SIMULADO – SIN VALIDEZ FISCAL"
+    assert d["sello"] == "SIMULATED – NO FISCAL VALIDITY"
     assert d["metricas"]["comprobantes"] >= 1
     assert d["facturas"], "tienen que venir comprobantes de ejemplo"
 

@@ -1,20 +1,30 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { num, usd } from "../format.js";
+import { getIdioma, t, useIdioma } from "../i18n.js";
 
-const DIA_CORTO = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+const DIA_CORTO = {
+  en: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+  es: ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"],
+};
 const VELOCIDADES = [
   { minutos: 3, etiqueta: "3 min" },
   { minutos: 6, etiqueta: "6 min" },
   { minutos: 9, etiqueta: "9 min" },
 ];
 
-// Los agentes que hablan en la sala, con su carita y color.
-const AGENTES = {
-  operador: { nombre: "Teleoperador", icono: "📞" },
-  agenda: { nombre: "Agenda", icono: "📅" },
-  tecnicos: { nombre: "Técnicos", icono: "🔧" },
-  despacho: { nombre: "Despacho", icono: "🚚" },
-};
+function diaCorto(d) {
+  return (DIA_CORTO[getIdioma()] || DIA_CORTO.en)[d] ?? "";
+}
+
+// The agents that speak in the room, with their little face and color.
+function agentes() {
+  return {
+    operador: { nombre: t("Telemarketer", "Teleoperador"), icono: "📞" },
+    agenda: { nombre: t("Scheduling", "Agenda"), icono: "📅" },
+    tecnicos: { nombre: t("Technicians", "Técnicos"), icono: "🔧" },
+    despacho: { nombre: t("Dispatch", "Despacho"), icono: "🚚" },
+  };
+}
 
 function reloj(minuto) {
   const h = 8 + Math.floor(minuto / 60);
@@ -23,15 +33,16 @@ function reloj(minuto) {
 }
 
 /**
- * La película del día: el mismo día que ya corrió el motor, pero reproducido
- * a cámara lenta para que el dueño (o el juez) vea la operación respirando.
+ * The day's movie: the same day the engine already ran, but replayed in slow
+ * motion so the owner (or the judge) sees the operation breathing.
  *
- * El programa calcula TODO al instante; acá solo lo estamos mostrando de a poco.
+ * The program computes EVERYTHING instantly; here we are only showing it bit by bit.
  */
 export default function Pelicula({ dia, velocidadInicial = 3, onTerminar }) {
+  useIdioma();
   const [minutos, setMinutos] = useState(velocidadInicial);
   const [corriendo, setCorriendo] = useState(true);
-  const [transcurrido, setTranscurrido] = useState(0); // fracción 0..1
+  const [transcurrido, setTranscurrido] = useState(0); // fraction 0..1
   const inicio = useRef(null);
   const raf = useRef(null);
 
@@ -40,20 +51,20 @@ export default function Pelicula({ dia, velocidadInicial = 3, onTerminar }) {
   const minFin = dia?.pelicula?.hora_fin ?? 1080;
   const span = Math.max(1, minFin - minIni);
 
-  // Reinicia la película si cambia el día o la velocidad elegida.
+  // Restarts the movie if the day or the chosen speed changes.
   useEffect(() => {
     inicio.current = null;
     setTranscurrido(0);
     setCorriendo(true);
   }, [dia, minutos]);
 
-  // El reloj: avanza a lo largo de los minutos elegidos.
+  // The clock: it advances over the chosen minutes.
   useEffect(() => {
     if (!corriendo || !ev.length) return;
     const durMs = minutos * 60 * 1000;
-    const paso = (t) => {
-      if (inicio.current === null) inicio.current = t;
-      const f = Math.min(1, (t - inicio.current) / durMs);
+    const paso = (time) => {
+      if (inicio.current === null) inicio.current = time;
+      const f = Math.min(1, (time - inicio.current) / durMs);
       setTranscurrido(f);
       if (f < 1) raf.current = requestAnimationFrame(paso);
       else setCorriendo(false);
@@ -67,18 +78,18 @@ export default function Pelicula({ dia, velocidadInicial = 3, onTerminar }) {
   const minutoActual = minIni + span * transcurrido;
   const visibles = useMemo(() => ev.filter((e) => e.minuto <= minutoActual), [ev, minutoActual]);
 
-  // Los contadores crecen a medida que pasan los eventos.
+  // The counters grow as the events go by.
   const c = useMemo(() => {
-    const t = { llamadas: 0, atendidas: 0, ventas: 0, instalaciones: 0 };
+    const cuenta = { llamadas: 0, atendidas: 0, ventas: 0, instalaciones: 0 };
     for (const e of visibles) {
-      if (e.tipo === "instalacion") t.instalaciones++;
+      if (e.tipo === "instalacion") cuenta.instalaciones++;
       else if (e.tipo === "llamada") {
-        t.llamadas++;
-        if (e.atendio) t.atendidas++;
-        if (e.venta) t.ventas++;
+        cuenta.llamadas++;
+        if (e.atendio) cuenta.atendidas++;
+        if (e.venta) cuenta.ventas++;
       }
     }
-    return t;
+    return cuenta;
   }, [visibles]);
 
   const listos = !corriendo && transcurrido >= 1;
@@ -89,12 +100,12 @@ export default function Pelicula({ dia, velocidadInicial = 3, onTerminar }) {
         <div className="pelicula-reloj">
           <span className="pelicula-hora">{reloj(Math.min(minutoActual, minFin))}</span>
           <span className="pelicula-fecha">
-            {DIA_CORTO[dia.dia] ?? ""} · Semana {dia.semana} · Mes {dia.mes}
+            {diaCorto(dia.dia)} · {t("Week", "Semana")} {dia.semana} · {t("Month", "Mes")} {dia.mes}
           </span>
         </div>
 
         <div className="pelicula-vel">
-          <span className="pelicula-vel-e">Dura</span>
+          <span className="pelicula-vel-e">{t("Length", "Duración")}</span>
           {VELOCIDADES.map((v) => (
             <button
               key={v.minutos}
@@ -105,11 +116,11 @@ export default function Pelicula({ dia, velocidadInicial = 3, onTerminar }) {
             </button>
           ))}
           <button className="dia-chip" onClick={() => setCorriendo((x) => !x)}>
-            {corriendo ? "⏸ Pausar" : "▶ Seguir"}
+            {corriendo ? t("⏸ Pause", "⏸ Pausa") : t("▶ Resume", "▶ Seguir")}
           </button>
           {listos ? (
             <button className="dia-chip activo" onClick={() => setTranscurrido(0)}>
-              ↺ Otra vez
+              {t("↺ Again", "↺ Otra vez")}
             </button>
           ) : null}
         </div>
@@ -120,26 +131,29 @@ export default function Pelicula({ dia, velocidadInicial = 3, onTerminar }) {
       </div>
 
       <div className="pelicula-contadores">
-        <Contador etiqueta="Llamadas" valor={c.llamadas} total={dia.llamadas} />
-        <Contador etiqueta="Contestaron" valor={c.atendidas} total={dia.atendidas} />
-        <Contador etiqueta="Ventas" valor={c.ventas} total={dia.ventas} tono="positivo" />
+        <Contador etiqueta={t("Calls", "Llamadas")} valor={c.llamadas} total={dia.llamadas} />
+        <Contador etiqueta={t("Answered", "Atendidas")} valor={c.atendidas} total={dia.atendidas} />
+        <Contador etiqueta={t("Sales", "Ventas")} valor={c.ventas} total={dia.ventas} tono="positivo" />
         <Contador
-          etiqueta="Instalaciones"
+          etiqueta={t("Installs", "Instalaciones")}
           valor={c.instalaciones}
           total={dia.instalaciones}
           tono="ondas"
         />
         <Contador
-          etiqueta="Leads del día"
+          etiqueta={t("Day leads", "Leads del día")}
           valor={Math.min(dia.leads, Math.round(dia.leads * transcurrido))}
           total={dia.leads}
         />
-        <Contador etiqueta="Caja" valor={usd(dia.caja, 0)} solo />
+        <Contador etiqueta={t("Cash", "Caja")} valor={usd(dia.caja, 0)} solo />
       </div>
 
       <div className="pelicula-cinta" role="log" aria-live="polite">
         {visibles.length === 0 ? (
-          <div className="sin-datos">Abriendo el local… todavía no suena ningún teléfono.</div>
+          <div className="sin-datos">
+            {t("Opening the shop… no phone is ringing yet.",
+               "Abriendo el local… todavía no suena ningún teléfono.")}
+          </div>
         ) : (
           visibles
             .slice(-90)
@@ -150,10 +164,11 @@ export default function Pelicula({ dia, velocidadInicial = 3, onTerminar }) {
 
       {listos ? (
         <div className="pelicula-fin">
-          <span>✅ Día cerrado: {dia.ventas} ventas · {dia.instalaciones} instalaciones · caja{" "}
+          <span>✅ {t("Day closed", "Día cerrado")}: {dia.ventas} {t("sales", "ventas")} ·{" "}
+            {dia.instalaciones} {t("installs", "instalaciones")} · {t("cash", "caja")}{" "}
             {usd(dia.caja, 0)}</span>
           <button className="boton boton-primario boton-chico" onClick={onTerminar}>
-            Ver el resumen
+            {t("Close", "Cerrar")}
           </button>
         </div>
       ) : null}
@@ -180,13 +195,13 @@ function Fila({ e }) {
         <span className="cinta-hora">{reloj(e.minuto)}</span>
         <span className="cinta-ico">🔧</span>
         <span className="cinta-txt">
-          <b>Instalación</b> — {e.cliente} en {e.barrio} ({e.turno})
+          <b>{t("Install", "Instalación")}</b> — {e.cliente} {t("in", "en")} {e.barrio} ({e.turno})
         </span>
       </div>
     );
   }
   if (e.tipo === "charla") {
-    const a = AGENTES[e.agente] ?? { nombre: e.agente, icono: "🤖" };
+    const a = agentes()[e.agente] ?? { nombre: e.agente, icono: "🤖" };
     return (
       <div className={`cinta-fila cinta-charla cinta-charla-${e.agente}`}>
         <span className="cinta-hora">{reloj(e.minuto)}</span>
@@ -202,8 +217,12 @@ function Fila({ e }) {
       <span className="cinta-hora">{reloj(e.minuto)}</span>
       <span className="cinta-ico">{e.venta ? "🎉" : e.atendio ? "☎" : "📵"}</span>
       <span className="cinta-txt">
-        <b>{e.operador}</b> llamó a {e.cliente} ({e.barrio}) —{" "}
-        {e.venta ? "¡Cerró la venta!" : e.atendio ? e.motivo : `No contestó (${e.motivo})`}
+        <b>{e.operador}</b> {t("called", "llamó a")} {e.cliente} ({e.barrio}) —{" "}
+        {e.venta
+          ? t("closed the sale!", "¡cerró la venta!")
+          : e.atendio
+            ? e.motivo
+            : t(`No answer (${e.motivo})`, `Sin respuesta (${e.motivo})`)}
       </span>
     </div>
   );

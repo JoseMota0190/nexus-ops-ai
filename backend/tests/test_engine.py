@@ -174,7 +174,7 @@ def test_gerente_valida_decision_imposible():
                         razon="por las dudas")
     v = validar_decision(d, e, 1_000_000.0, mes=1)
     assert v.ok is False          # la venta no justifica más manos
-    assert "no justifica" in v.motivo
+    assert "justify" in v.motivo
 
 
 def test_gerente_llega_a_10_tecnicos_en_9_meses():
