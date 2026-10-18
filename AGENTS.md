@@ -40,15 +40,21 @@ escenarios "qué pasa si".
   **Actualización 14 oct:** el portal `notebooks.amd.com/tokenfactory` respondió
   *"Your email is not registered for API key distribution"* → el autor decidió **NO insistir
   más**. El motor pasa a ser **AMD Radeon Cloud** (`developer.amd.com.cn/radeon`).
+  **✅ ACTUALIZACIÓN 18 oct — AMD YA ESTÁ ANDANDO DE VERDAD (no es pendiente).**
+  El `.env` tiene `USE_MOCK=false`, `LLM_BASE_URL=https://developer.amd.com.cn/radeon/api/v1`,
+  `LLM_MODEL=Gemma-4-31B-IT` con su clave `rc-…`. Verificado en vivo (local y en Render):
+  `GET /api/metricas` devuelve `modo_mock: false`, `modelo: Gemma-4-31B-IT` y **llamadas reales
+  con 0 respaldos**. **Gemma NO hay que desplegarlo a mano**: Radeon Cloud ya sirve
+  `Gemma-4-31B-IT` (contradice el supuesto viejo de que no estaba en el catálogo).
 - **Evolus: QUEDÓ ELIMINADO (18 oct).** El código de evento (`AMDACT3`) cerró y no se consiguió
   workspace → se borró el módulo `backend/evolus/` y `EVOLUS.md`. El **auditor de facturas se
   mantuvo, pero es por reglas** (no usa IA): vive en `backend/engine/facturas.py`.
 - **Google/Gemma: YA NO ESTÁ DESCARTADO** (cambio de decisión del autor, 14 oct).
   Google DeepMind entró como partner del hackathon y **Gemma corre sobre GPU de AMD (ROCm)**,
   así que **no viola el requisito de AMD** y además da acceso a un **premio extra de Google**.
-  El autor eligió **ir directo a montar Gemma**. Ojo: **Gemma NO está en el catálogo gratis**
-  de Radeon Cloud (9 modelos, ninguno Gemma) → hay que **alquilar una instancia GPU y
-  desplegarlo con vLLM**. Ver §8 y §9.
+  El autor eligió **ir directo a montar Gemma**. **Corrección 18 oct:** Gemma **SÍ está
+  disponible** en Radeon Cloud como `Gemma-4-31B-IT` y **ya se está usando** (no hizo falta
+  alquilar GPU ni desplegar vLLM). Ver §8 y §9.
 
 Reglas del track Commerce (lablab.ai):
 - NO usar el LLM como único método de pronóstico. Usar Monte Carlo/estadística y explicar el cálculo.
@@ -152,6 +158,9 @@ GitHub + deploy en vivo ✅** (sesión del 18 oct): `https://nexus-ops-ai.netlif
 push/deploy, así Netlify/Render no redeployan a mitad del trabajo).
 
 **✅ Fases 2 a 8 construidas y probadas** (ver detalle de fases más abajo):
+- **🧠 Motor AMD EN VIVO ✅ (18 oct)** — el backend corre con **Gemma real** (`Gemma-4-31B-IT`
+  sobre Radeon Cloud, `USE_MOCK=false`), tanto local como en Render. `GET /api/metricas` →
+  `modo_mock:false`, llamadas reales, **0 respaldos**. **Requisito de AMD: cumplido.**
 - `backend/store.py` — SQLite real (clientes, leads, llamadas, motivos, citas, técnicos,
   decisiones del gerente, actas, resúmenes por día/mes) + `transaction()` que agrupa los
   escritos (arranque 25 s → 3.4 s).
@@ -278,8 +287,8 @@ Todo verificado: **77 tests + 46 smoke en verde**. Cambios:
    fix del cierre mensual día a día. **Hecho el 18 oct:** todo el sitio en inglés + **botón ES/EN**
    que cambia TODO, Evolus eliminado (auditor de facturas por reglas), limpieza de paneles muertos
    (ver §6).
-   **Faltan:** deploy final tras el push, grabar el video, subir todo al repo público.
-   **Motor de AMD pendiente:** ver **§8** (checklist de retomada).
+   **Faltan:** grabar el video, exportar los slides a PDF y llenar el formulario (ver §8.6).
+   **Motor de AMD: ✅ EN VIVO** — `Gemma-4-31B-IT` sobre Radeon Cloud (ver §6 y §8.1).
 
 > **⏸️ RETOMADA.** El 14 oct el trabajo quedó pausado a propósito; el **17–18 oct** se avanzó todo
 > lo que no dependía del autor (rebranding + sectores + **bilingüe ES/EN** + limpieza + Evolus
@@ -288,15 +297,13 @@ Todo verificado: **77 tests + 46 smoke en verde**. Cambios:
 
 ### 📌 PENDIENTE DEL AUTOR (lo que NO puedo hacer yo)
 
-1. **Abrir Docker Desktop** y correr `docker compose up --build` para re-verificar (esta sesión
-   no lo pudo hacer porque el Docker estaba cerrado).
-2. **`gh auth login`** (punto 2 del §8) → crear el repo **público** y pushear `main`. **Yo ya
-   dejé `main` al día y pusheado a `origin`** (el remote ya existe).
-3. **Claves / cuentas** (puntos 1 y 4 del §8): créditos AMD (GPU para Gemma) y cuentas de Render
-   y Netlify.
-   → Con esas claves, el cambio es **solo 3 variables de entorno** (`LLM_BASE_URL`, `LLM_MODEL`,
-   `USE_MOCK=false`).
-4. **Grabar el video** siguiendo `PITCH.md` (ya actualizado) y **armar los slides** con `SLIDES.md`.
+1. **Grabar el video** siguiendo `PITCH.md` (guion en inglés con subtítulos).
+2. **Exportar los slides** a PDF (`entrega/slides.html` + portada `entrega/cover.png`).
+3. **Llenar el formulario** de entrega en lablab.ai (Application URL + repo + link del video).
+4. *(Opcional)* Abrir **Docker Desktop** y correr `docker compose up --build` para re-verificar.
+
+> **Ya NO son pendientes:** AMD/Gemma (✅ en vivo con `Gemma-4-31B-IT`), GitHub público (✅
+> pusheado), Render + Netlify (✅ deployados).
 
 **Recorte de emergencia si falta tiempo:** primero el mapa animado, luego extras. NUNCA recortar
 AMD, el envío ni el README.
@@ -310,38 +317,23 @@ AMD, el envío ni el README.
 > NO empezar por tareas nuevas. Primero la lista, después se continúa.
 > Trabajo **pausado a propósito** el 14 oct: no hay bug abierto, todo verde (77 tests + 46 smoke).
 
-### 1. 🔴 AMD — créditos de Developer Cloud (es el freno de Gemma)
-**Qué mira el autor:** la cuenta AMD con la que se anotó a la hackathon. Buscar en el **correo**
-algo de "AMD AI Developer Program" / "AMD Developer Cloud"; en la **página del evento en
-lablab.ai** (sponsors o aviso del 12 oct); y en el **Discord de anuncios**.
-**Qué busca:** un número — puede aparecer como *créditos*, *saldo*, *$100* o *horas de GPU*.
-Ojo con si le pide anotarse a un **"AMD AI League"** (otro participante reportó esa duda y
-nadie contestó todavía).
-**Qué devuelve:** el **texto exacto** que ve (o foto de pantalla). Si no ve nada → el
-asistente le arma una pregunta en inglés para el Discord.
-**Qué hace el asistente:** con el saldo, elegir la GPU; sin saldo, escalar por Discord.
-**Contexto:** TokenFactory quedó descartado (email no habilitado). **El motor será Gemma en una
-instancia GPU propia de AMD con vLLM.** El equipo de la hackathon confirmó en el Discord que los
-agentes corren sobre *"your team's OpenAI-compatible endpoint (e.g. **vLLM on AMD Developer
-Cloud**)"* → **nuestro plan es exactamente el camino que recomiendan**.
-**Sin créditos no hay GPU → no hay Gemma.**
-**Decisión ya tomada:** el autor **espera a que esté la GPU de Gemma**. Mientras tanto el
-programa corre en **modo simulado** (`USE_MOCK=true`) y **NO** se cambia a ningún modelo
-interino. **Frente si los créditos no aparecen:** modelo del catálogo gratis de Radeon Cloud
-(corren en GPU de AMD, requisito cumplido) — **no cambiarlo sin preguntarle de nuevo**.
-**Riesgo:** Gemma no está en el catálogo gratis; requiere instancia + créditos + mantenerla viva
-el día de la demo. El cliente LLM **ya acepta cualquier endpoint compatible con OpenAI** (solo
-cambian 3 variables de entorno).
-**Ya preparado:** `backend/tests/probar_amd.py` verifica conexión real, latencia y **si el modelo
-devuelve el JSON estructurado** que los agentes necesitan. El default de `LLM_BASE_URL` ya apunta
-a Radeon Cloud; con la GPU solo se cambia a la URL de la instancia (p. ej. `/spaces/<id>/v1`).
+### 1. ✅ AMD — RESUELTO Y EN VIVO (Gemma `Gemma-4-31B-IT`)
+**Ya no hay nada que reclamar ni que montar.** El `.env` (raíz, gitignoreado) tiene
+`USE_MOCK=false`, `LLM_BASE_URL=https://developer.amd.com.cn/radeon/api/v1`,
+`LLM_MODEL=Gemma-4-31B-IT` y su clave `rc-…`.
+**Verificado 18 oct (local y Render):** `GET /api/metricas` → `modo_mock: false`,
+`modelo: Gemma-4-31B-IT`, llamadas reales, `fallback_calls: 0`.
+- **Radeon Cloud YA sirve Gemma** (`Gemma-4-31B-IT`): no hizo falta alquilar GPU ni desplegar
+  vLLM. Se cae el supuesto viejo de "Gemma no está en el catálogo gratis".
+- **Requisito de elegibilidad (AMD visible en la demo): CUMPLIDO.** La franja AMD al pie muestra
+  en vivo latencia, tokens/s y respaldos.
+- **Herramienta de chequeo:** `backend/tests/probar_amd.py` (conexión real, latencia y JSON
+  estructurado). Los secretos **NUNCA** se commitean (viven en `.env` local y en el panel de
+  Render).
 
-### 2. 🔴 GitHub — `gh auth login` (bloquea la entrega del repo)
-- **Qué hace el autor:** en una terminal de Windows correr
-  `gh auth login --hostname github.com --git-protocol https --web`,
-  pegar el código de 8 letras en el navegador y apretar **Authorize**.
-- **Qué hace el asistente:** crear el repo **PÚBLICO** y pushear `main`.
-- Su GitHub: **JoseMota0190**. Rama ya renombrada a `main` ✅.
+### 2. ✅ GitHub — RESUELTO
+- Repo **PÚBLICO**: `https://github.com/JoseMota0190/nexus-ops-ai` (rama `main`), ya pusheado.
+- Último commit de esta sesión: `458f223` (bilingüe + limpieza).
 
 ### 3. ⚫ Evolus — ELIMINADO (evento cerrado)
 El código de evento (`AMDACT3`) ya cerró y no se consiguió workspace → se **borró** el módulo
@@ -362,17 +354,17 @@ Ya mandó la consulta por el bloqueo de TokenFactory. **Faltan:**
 
 ### 6. 🟢 Pendientes de más adelante
 - **Grabar el video** siguiendo `PITCH.md` (inglés + subtítulos).
-- **Desplegar Gemma con vLLM** cuando haya GPU → cambiar `LLM_BASE_URL` + `LLM_MODEL` +
-  `USE_MOCK=false` → correr `backend/tests/probar_amd.py`.
+- **Exportar los slides** a PDF (`entrega/slides.html` + `entrega/cover.png`).
+- **Llenar el formulario** de lablab.ai (Application URL + repo + video).
+- *(Opcional)* Abrir Docker Desktop y correr `docker compose up --build` para re-verificar.
 
 ---
 
 ## 9. Decisiones CERRADAS (NO volver a preguntar)
 
 Empresa "Nexus Alarm" · proyecto nexus-ops-ai · Python/FastAPI + React · SQLite · MIT ·
-**motor: Gemma servido por AMD** (TokenFactory descartado por bloqueo del email, 14 oct) ·
-**esperar a la GPU de Gemma y NO usar modelo interino** (frente si no hay créditos: modelo
-gratis del catálogo de Radeon Cloud, que corre sobre GPU de AMD) · **Evolus ELIMINADO (18 oct)**:
+**motor: Gemma `Gemma-4-31B-IT` servido por AMD Radeon Cloud — EN VIVO (18 oct, `USE_MOCK=false`,
+llamadas reales y 0 respaldos; TokenFactory descartado por bloqueo del email, 14 oct)** · **Evolus ELIMINADO (18 oct)**:
 el evento cerró; el auditor de facturas **quedó por reglas** (Monte Carlo + detección, sin IA) ·
 lead en vivo solo texto · **CON mapa animado**
 (primer corte si falta tiempo) · **solo ARCA simulado, NO hay "No Llame"** (todos los leads son de
