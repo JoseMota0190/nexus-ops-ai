@@ -1,8 +1,8 @@
-"""Prueba de conexión real con AMD. Sin esto, no sabemos si el cerebro anda.
+"""Prueba de conexión real con Nebius Token Factory. Sin esto, no sabemos si el cerebro anda.
 
 Uso (desde backend/):
 
-    .venv\\Scripts\\python.exe tests\\probar_amd.py
+    .venv\\Scripts\\python.exe tests\\probar_nebius.py
 
 Toma la configuración del archivo `.env` (o del entorno):
     LLM_BASE_URL   endpoint compatible con OpenAI
@@ -67,15 +67,18 @@ def main() -> int:
     cfg = get_config()
 
     print("=" * 66)
-    print("PRUEBA DE CONEXIÓN CON AMD")
+    print("PRUEBA DE CONEXIÓN CON NEBIUS TOKEN FACTORY")
     print("=" * 66)
     print(f"  endpoint : {cfg.base_url}")
-    print(f"  modelo   : {cfg.model or '(sin definir)'}")
+    print(f"  razona   : {cfg.reasoning_model or '(sin definir)'}")
+    print(f"  rápido   : {cfg.fast_model or '(sin definir)'}")
+    print(f"  fallback : {cfg.model or '(sin definir)'}")
     print(f"  clave    : {'sí (' + str(len(cfg.api_key)) + ' caracteres)' if cfg.api_key else _rojo('NO DEFINIDA')}")
 
-    if not cfg.api_key or not cfg.model:
+    configurados = [m for m in (cfg.reasoning_model, cfg.fast_model, cfg.model) if m]
+    if not cfg.api_key or not configurados:
         print(f"\n{_rojo('Faltan datos.')}")
-        print("Completá LLM_API_KEY y LLM_MODEL en backend/.env y volvé a correr.")
+        print("Completá LLM_API_KEY y LLM_MODEL_REASONING / LLM_MODEL_FAST en backend/.env y volvé a correr.")
         return 2
 
     print("\n--- 1) Lista de modelos ---")
@@ -83,10 +86,11 @@ def main() -> int:
     if modelos:
         print(f"  {_verde('OK')} hay {len(modelos)} modelos:")
         for m in modelos:
-            marca = " <-- el nuestro" if m == cfg.model else ""
+            marca = " <-- lo usa el router" if m in configurados else ""
             print(f"     · {m}{marca}")
-        if cfg.model not in modelos:
-            print(f"\n  {_ambar('⚠')} el modelo '{cfg.model}' NO figura en la lista.")
+        faltan = [m for m in configurados if m not in modelos]
+        if faltan:
+            print(f"\n  {_ambar('⚠')} estos modelos NO figuran en la lista: {', '.join(faltan)}")
             print("    ¿Se copió el nombre completo? Pegá el nombre tal cual aparece arriba.")
     else:
         print("  seguimos igual, pero con menos información")
@@ -138,8 +142,8 @@ def main() -> int:
         print("     Prueba con otro modelo del catálogo (el más grande suele ir mejor).")
         return 1
 
-    print(f"\n{_verde('TODO VERDE')}: el cerebro de AMD responde y habla nuestro idioma.")
-    print(f"El panel AMD de la pantalla ahora va a mostrar latencia y tokens de verdad.")
+    print(f"\n{_verde('TODO VERDE')}: el cerebro de Nebius Token Factory responde y habla nuestro idioma.")
+    print("El panel de observabilidad ahora va a mostrar latencia y tokens de verdad.")
     return 0
 
 

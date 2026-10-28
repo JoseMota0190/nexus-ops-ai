@@ -2,7 +2,7 @@
 
 La pantalla única que ve el dueño de **Nexus Alarm**: los KPIs del negocio, el gráfico
 "¿Qué pasa si…?", la evolución mes a mes, el acta del Gerente IA, el telégrafo de llamadas,
-el mapa de CABA y el panel de métricas de AMD.
+el mapa de CABA y el panel de observabilidad del router Nemotron.
 
 Todo en español, tema oscuro, sin librerías de UI pesadas (los gráficos están dibujados a
 mano con SVG).
@@ -52,6 +52,6 @@ La prueba `smoke` necesita el backend levantado y el `build` hecho.
 - **Telégrafo**: `GET /api/llamadas` + los motivos de `/api/estado`.
 - **El agente habla**: `POST /api/llamada_en_vivo`.
 - **Mapa**: `GET /api/mapa`, dibujado con SVG y animado por día de la semana.
-- **Panel AMD**: `GET /api/metricas`.
+- **Franja Nemotron**: `GET /api/metricas` (router, tokens, latencia y respaldos por modelo).
 
 El estado se refresca solo cada 4 segundos (los gráficos y tablas, cada 12).

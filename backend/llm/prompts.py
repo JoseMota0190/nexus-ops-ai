@@ -3,9 +3,8 @@
 Centralizados acá para no repetirlos (ni olvidarlos) en cada llamada.
 
 Hoy el "truco" es uno solo: avisar al modelo que **es un simulador de
-ficción**. Sin ese aviso, Gemma (y otros modelos con guardas de seguridad)
-se niega a hacer de teleoperador o a firmar como "gerente de Nexus Alarm"
-porque no es una empresa real.
+ficción**. Sin ese aviso, los modelos con guardas de seguridad se niegan a
+interpretar el rol y rechazan actuar como un agente de Nexus Alarm.
 
 Regla: todo `messages` que se le mande al cliente LLM para un agente de
 Negocio (teleoperador, agenda, gerente, despacho) tiene que pasar por
@@ -66,7 +65,7 @@ def mensajes_de_agente(messages: list[dict[str, str]]) -> list[dict[str, str]]:
 def descripcion_esquema(schema) -> str:
     """Texto corto que enumera los campos del esquema esperado.
 
-    Gemma y los modelos con guardas de seguridad suelen seguir mejor las
+    Los modelos con guardas de seguridad suelen seguir mejor las
     instrucciones si el prompt les **enumera los campos** del JSON que
     tienen que devolver. Esto se concatena al system message.
     """

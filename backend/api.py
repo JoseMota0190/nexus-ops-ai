@@ -1,8 +1,8 @@
 """API de Nexus Alarm (FastAPI).
 
 Sirve todo lo que necesita la pantalla del dueño: estado, KPIs, el acta del
-Gerente, el log de llamadas, el mapa, las métricas AMD y los botones de la
-simulación (avanzar 1 mes / correr todo).
+Gerente, el log de llamadas, el mapa, las métricas del router Nemotron y los
+botones de la simulación (avanzar 1 mes / correr todo).
 
 Arranque:  `uvicorn api:app --reload`  (desde `backend/`)
 """
@@ -110,7 +110,7 @@ def _construir_mundo(lang: str) -> "tuple[Store, Simulacion]":
 
 
 # El DÍA EN VIVO: el que corre en segundo plano, negociando venta por venta, para
-# que la pantalla vea a los agentes hablar mientras piensan (AMD tarda ~15 s por
+# que la pantalla vea a los agentes hablar mientras piensan (Nemotron tarda ~15 s por
 # agente y un día del mes 7 tiene ~24 ventas: son minutos).
 _DIA_LOCK = threading.Lock()
 _DIA: dict = {"corriendo": False, "listo": False, "error": None, "resultado": None}
@@ -451,17 +451,45 @@ def facturacion(mes: int | None = None) -> dict:
     }
 
 
-# ------------------------------------------------------------ métricas AMD
+# ------------------------------------------- métricas del router de modelos
+_AGENTES_PANEL = ("gerente", "sector_ventas", "teleoperador", "operador",
+                  "agenda", "tecnicos", "despacho")
+
+
 @app.get("/api/metricas")
 def metricas() -> dict:
-    """Panel AMD: latencia, tokens y tokens/segundo del cerebro servido sobre AMD."""
+    """Observabilidad: latencia, tokens y uso por modelo del router Nemotron.
+
+    `por_modelo` muestra cuántas llamadas y tokens consumió cada endpoint, para
+    que se vea en vivo que el volumen va al modelo rápido y el razonamiento al
+    grande.
+    """
     m = get_metrics()
     cfg = get_config()
     resumen = m.summary() if hasattr(m, "summary") else {}
+
+    por_modelo: dict[str, dict] = {}
+    for rec in m.records():
+        b = por_modelo.setdefault(rec.model, {
+            "calls": 0, "prompt_tokens": 0, "completion_tokens": 0,
+            "fallbacks": 0, "latency_ms_total": 0.0,
+        })
+        b["calls"] += 1
+        b["prompt_tokens"] += rec.prompt_tokens
+        b["completion_tokens"] += rec.completion_tokens
+        b["fallbacks"] += 1 if rec.fallback else 0
+        b["latency_ms_total"] += rec.latency_ms
+    for b in por_modelo.values():
+        b["latency_ms_avg"] = round(b.pop("latency_ms_total") / b["calls"], 2)
+
     return {
-        "modelo": cfg.model or "mock",
+        "modelo": cfg.model or cfg.reasoning_model or "mock",
+        "modelo_razonamiento": cfg.reasoning_model,
+        "modelo_rapido": cfg.fast_model,
+        "modelos": {a: cfg.model_for(a) for a in _AGENTES_PANEL},
         "modo_mock": cfg.use_mock,
         "base_url": cfg.base_url,
+        "por_modelo": por_modelo,
         **resumen,
     }
 

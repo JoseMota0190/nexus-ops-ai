@@ -21,16 +21,21 @@ services:
     autoDeploy: true
     plan: free
     envVars:
-      # El CEREBRO corre en AMD (Gemma en Radeon Cloud). La semilla de los 6 meses
-      # precargados usa el motor local igual (ver api.py), así el arranque es en
-      # segundos; AMD se usa en todo lo EN VIVO: la Sala de Agentes, las reuniones
-      # del gerente y la llamada en vivo. LLM_API_KEY y LLM_MODEL se cargan a mano
-      # desde el panel de Render (nunca se commitean).
+      # El CEREBRO corre en Nebius Token Factory con el router Nemotron. La semilla
+      # de los 6 meses precargados usa el motor local igual (ver api.py), así el
+      # arranque es en segundos; Nebius se usa en todo lo EN VIVO: la Sala de
+      # Agentes, las reuniones del gerente y la llamada en vivo.
+      # LLM_API_KEY se carga a mano desde el panel de Render (nunca se commitea).
       - key: USE_MOCK
         value: "false"
-      # AMD Radeon Cloud: endpoints compatibles con OpenAI, gratis y sin aprobación.
+      # Nebius Token Factory: endpoint compatible con OpenAI.
       - key: LLM_BASE_URL
-        value: "https://developer.amd.com.cn/radeon/api/v1"
+        value: "https://api.tokenfactory.nebius.com/v1"
+      # Router: razonamiento al modelo grande, volumen diario al liviano.
+      - key: LLM_MODEL_REASONING
+        value: "nvidia/Nemotron-3.5-Super-VL"
+      - key: LLM_MODEL_FAST
+        value: "nvidia/Nemotron-3_5-Lightning"
       # LLM_API_KEY y LLM_MODEL NO se listan acá a propósito: se cargan a mano
       # desde el panel de Render (Environment), así la clave nunca se commitea.
       - key: LLM_MAX_RETRIES

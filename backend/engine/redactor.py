@@ -2,9 +2,9 @@
 
 Composes each sector's monthly report from the NUMBERS the program computed
 (not from the AI). It is the "fallback writer": it works without internet,
-without credits and without AMD, so the demo **never ends up without a report**.
+without credits and without an external brain, so the demo **never ends up without a report**.
 
-When the real brain (AMD) is available, it analyzes and this module writes the
+When the real brain (real AI model) is available, it analyzes and this module writes the
 final document.
 
 It speaks English and Spanish: every user-visible string carries both versions

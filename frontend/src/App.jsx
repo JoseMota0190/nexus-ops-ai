@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "./api.js";
 import { getIdioma, setIdioma, t, useIdioma } from "./i18n.js";
-import FranjaAMD from "./components/FranjaAMD.jsx";
+import FranjaNebius from "./components/FranjaNebius.jsx";
 import SectorPanel from "./components/SectorPanel.jsx";
 import MapaCaba from "./components/MapaCaba.jsx";
 import Logo from "./components/Logo.jsx";
@@ -180,8 +180,8 @@ export default function App() {
     if (ocupado || pelicula) return;
     setAviso(null);
 
-    // Live room (month 7 onward): the agents negotiate sale by sale and AMD
-    // thinks slowly, so the day runs in the BACKGROUND and we watch it fill up
+    // Live room (month 7 onward): the agents negotiate sale by sale and the
+    // model thinks slowly, so the day runs in the BACKGROUND and we watch it fill up
     // live. The rest is followed by the live-day effect (the one polling every 2 s).
     if (estado?.enjambre?.activo) {
       setOcupado("dia");
@@ -345,7 +345,7 @@ export default function App() {
         ) : null}
       </main>
 
-      {/* The FOOTER: the simulation box + the Agent Room + the AMD strip. */}
+      {/* The FOOTER: the simulation box + the Agent Room + the Nemotron strip. */}
       <footer className="pie">
         <div className="menu-simulacion">
           <button
@@ -388,8 +388,8 @@ export default function App() {
           <div className="sim-sala-cab">
             <span className="sim-sala-titulo">{t("🗣️ Live agent room", "🗣️ Sala de agentes en vivo")}</span>
             <span className="sim-sala-nota">
-              {t("The agents negotiate every sale on AMD; here you see the chat exactly as it is.",
-                 "Los agentes negocian cada venta sobre AMD; acá ves la charla tal cual es.")}
+              {t("The agents negotiate every sale on Nemotron; here you see the chat exactly as it is.",
+                 "Los agentes negocian cada venta sobre Nemotron; acá ves la charla tal cual es.")}
             </span>
           </div>
           <div className="sim-sala-caja">
@@ -397,12 +397,12 @@ export default function App() {
           </div>
         </section>
 
-        {/* The AMD strip: the pulse of the brain, always in sight. */}
-        <FranjaAMD metricas={metricas} />
+        {/* The Nemotron strip: the pulse of the brain and the router, always in sight. */}
+        <FranjaNebius metricas={metricas} />
       </footer>
 
         {/* The LIVE DAY: while the agents negotiate, we cover the map with the room
-            and let the bubbles keep appearing (AMD thinks slowly, ~15 s). */}
+            and let the bubbles keep appearing (Nemotron thinks slowly, ~15 s). */}
         {enVivo ? (
           <div className="vivo-envoltorio">
             <div className="vivo-caja">
@@ -419,8 +419,8 @@ export default function App() {
                 </span>
               </div>
               <p className="vivo-bajada">
-                {t("The brain runs on AMD and thinks slowly (about 15 s per agent), so the day builds up little by little. Watch the room fill up.",
-                   "El cerebro corre sobre AMD y piensa despacio (unos 15 s por agente), así que el día se arma de a poco. Mirá cómo se llena la sala.")}
+                {t("The brain runs on Nemotron and thinks slowly (about 15 s per agent), so the day builds up little by little. Watch the room fill up.",
+                   "El cerebro corre sobre Nemotron y piensa despacio (unos 15 s por agente), así que el día se arma de a poco. Mirá cómo se llena la sala.")}
               </p>
               <div className="vivo-sala">
                 <SalaAgentes estado={estado} refrescoMs={2500} />

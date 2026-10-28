@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 _TD = tempfile.mkdtemp()
 os.environ["NEXUS_DB"] = str(Path(_TD) / "api.db")
 
-# Los tests SIEMPRE corren sin red, aunque el `.env` de la máquina tenga AMD
+# Los tests SIEMPRE corren sin red, aunque el `.env` del cliente tenga Nebius
 # prendido. Se fija ANTES de importar api (load_dotenv no pisa lo ya seteado).
 os.environ["USE_MOCK"] = "true"
 
@@ -69,7 +69,7 @@ def test_llamadas_y_mensajes_log():
     assert isinstance(wa, list)
 
 
-def test_metricas_amd():
+def test_metricas_router():
     d = client.get("/api/metricas").json()
     assert "base_url" in d
     assert "total_calls" in d
@@ -199,7 +199,7 @@ if __name__ == "__main__":
     test_llamada_en_vivo_hace_hablar_a_la_ia()
     test_mapa_con_citas_y_zonas()
     test_llamadas_y_mensajes_log()
-    test_metricas_amd()
+    test_metricas_router()
     test_objetivos_9_meses()
     test_reiniciar_vuelve_al_inicio()
     test_todos_los_get_de_la_pantalla_responden()

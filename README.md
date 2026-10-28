@@ -1,232 +1,236 @@
-# nexus-ops-ai — Nexus Alarm Digital Twin
+# Nexus Alarm — a digital twin for a security-alarm company
 
-A digital twin of a fictional home-alarm installation company in Buenos Aires (CABA).
-A swarm of AI agents runs the whole sales process — lead → telemarketer → scheduling →
-technician dispatch → invoice — while the owner watches live KPIs, tries "what-if"
-scenarios and runs the 9 months of the plan.
+> **Nebius x NVIDIA Global AI Hackathon 2026 — Best Apps and Agents track**
+>
+> A working simulation of an alarm-and-monitoring company, run by a team of LLM
+> agents on **Nebius Token Factory** with **NVIDIA Nemotron** models.
 
-**The system's brain: an open model served on AMD infrastructure** (AMD Radeon
-Cloud / a GPU instance running Gemma + vLLM). The agents' inference runs on AMD.
-
-> **Hackathon project (AMD Developer Hackathon: ACT III / lablab.ai · Reinvent Commerce track).**
-> Every number, company, call and invoice is **SIMULATED**. Nothing here is advice, real
-> billing or a tax claim. Invoices carry "SIMULATED – NO FISCAL VALIDITY". The comparison
-> baseline is an **estimate**.
+**[Live demo](#) · [3-minute video](#) · [License: MIT](LICENSE)**
 
 ---
 
-## The story it tells
+## The problem
 
-Nexus Alarm starts with **3 telemarketers and 2 technicians**: 150 calls/day (50 per
-operator), ~6 sales a day, booked for the **following week**, Monday to Saturday.
+A security-alarm company in Buenos Aires sells a simple thing: someone answers
+the phone, a technician installs a sensor, a monthly invoice goes out. The
+business is brutally operational — conversion, technician capacity, routing,
+cash — and owners make those decisions on gut feeling, after the month is gone.
 
-An **AI Manager** meets every month, looks at the numbers, moves its three levers
-(hire operators · hire technicians · improve database conversion) and decides how much
-to grow. The **program validates** every decision against the business rules (cash,
-hiring cap, capacity) and, if the plan falls short, a **safety net** flags it and fixes
-it **transparently** — it is written into the minutes.
+Hiring three more technicians costs real money. Improving conversion costs
+something else. Nobody can A/B test a company.
 
-Result of the 9-month simulation:
+## The answer
 
-| | month 1 | month 9 | |
-|---|---:|---:|---:|
-| Sales/day | 6.8 | 30.5 | **×4.5** |
-| Telemarketers | 3 | 8 | ×2.7 |
-| Technicians | 2 | **10** | goal reached |
-| Revenue/month | 38.6 k | 313 k | ×8.1 |
-| Costs/month | 9.1 k | 24.4 k | ×2.7 |
+**Nexus Alarm is that company as a digital twin.** It simulates the day-to-day
+operation — incoming calls, lead qualification, scheduling, technician dispatch,
+invoicing, churn — and puts a team of LLM agents inside the loop. The owner can
+run nine months of operations in minutes, watch the agents actually negotiate,
+and read a monthly report that explains *why* the numbers moved.
 
-**Costs grow slower than sales** (×2.7 vs ×5.9 in revenue per install): the
-question of the pitch is *"how do I sell 5× more without putting 5× more operators?"* —
-the answer is that the Manager improves conversion as well as hiring.
+The point is not the dashboard. The point is that the agents make the decisions,
+the program checks that those decisions are physically possible (money, shifts,
+capacity), and the owner sees the consequence before spending a peso.
 
----
+### What the agents do
 
-## The 4 sectors (the ☰ menu)
-
-The menu is no longer a list of loose dashboards: it is **4 sectors**, and each one
-**reports on itself**. When each month closes, the sector **computes its numbers** with
-the program, the **AMD AI analyzes them**, and a **local writer** drafts the document
-(no internet, no credits, so the demo never runs out of a report). The report is saved
-and can be regenerated with one click.
-
-| Sector | What it watches | Color |
+| Agent | Job | Model tier |
 |---|---|---|
-| 🧾 **Management** | cash, revenue, costs, technicians, the month's decision | blue |
-| 📞 **Sales** | calls, answer rate, conversion, reasons for failure | green |
-| 📅 **Scheduling & technicians** | bookings, installs, slots, occupancy | violet |
-| 🧮 **Billing** | simulated invoices, reader precision, defects | cyan |
+| Teleoperator | Takes the call, qualifies the lead, proposes a slot | fast |
+| Operator | Turns a qualified lead into a booked job | fast |
+| Scheduling | Fits jobs into technician availability | fast |
+| Technicians | Assigns and reschedules field work | fast |
+| Dispatch | Reacts to traffic, no-shows and overruns | fast |
+| Manager | Monthly decision: hire, invest in conversion, or hold | reasoning |
+| Sector analysts | Monthly report per area (management, sales, scheduling, billing) | reasoning |
 
-The **6 preloaded months** are seeded instantly with the local writer (no credits, no
-network); the months you run live use the AMD AI.
-
-**Transparency:** each report shows where it came from (`🧠 Analyzed by the AI (AMD)` /
-`📝 Local writer` · `✍️ Written locally`) and its traffic light 🟢🟡🔴.
-
----
-
-## Bilingual (ES / EN)
-
-**English is the base language.** The **EN / ES** button in the top strip flips the
-**whole site** — interface, month labels, sector reports, agent dialogues and the
-invoice seal — from English to Spanish and back.
-
-Under the hood the backend keeps **one database per language** (`data/nexus.db` for
-English, `data/nexus_es.db` for Spanish), each seeded with the same 6 months. Pressing
-the button calls `POST /api/idioma`, which switches the engine's language and swaps the
-database in one step; switching never interrupts a live day (it answers `409` while a
-day is running). Every string lives in **one place per side**: `backend/idioma.py`
-(`t("English", "español")`) and `frontend/src/i18n.js` (`t("English", "español")`).
+The manager is the interesting one: it emits a *decision* (a lever and an
+amount), the deterministic engine rejects it if it is impossible, and the agent
+gets the rejection back and has to react. No hallucinated hiring spree — the
+simulation is the guardrail.
 
 ---
 
-## How to run it
+## How this uses Nebius Token Factory and NVIDIA Nemotron
 
-### Option A — Docker (a single command) ✅ recommended
+Everything runs on **[Nebius Token Factory](https://tokenfactory.nebius.com/)**,
+through its OpenAI-compatible endpoint:
 
-```bash
-docker compose up --build
+```
+LLM_BASE_URL=https://api.tokenfactory.nebius.com/v1
 ```
 
-- **Owner's screen:** http://localhost:8080
-- **Backend API:** http://localhost:8000/api/estado
+All model traffic goes through a single client (`backend/llm/client.py`) that
+speaks the OpenAI protocol, so the provider is configuration, not code. That is
+deliberate: it is what let us move the whole product onto Nebius without
+touching the simulation engine.
 
-It starts in **mock mode** by default (no AMD credits spent). To use the real AMD brain:
-copy `.env.example` to `.env`, set `USE_MOCK=false` and fill in `LLM_API_KEY` and
-`LLM_MODEL` (the Radeon Cloud endpoint is already set), then run
-`docker compose up --build` again.
+### Model routing: right-sized inference
 
-The SQLite database lives in the Docker volume `nexus_data` → **it survives restarts**.
-To wipe everything and start over: `docker compose down -v`.
+The most expensive mistake in an agentic product is sending every trivial call
+to a frontier model. Nexus Alarm runs a **router** (`backend/llm/config.py`) that
+picks a model per agent:
 
-If ports 8000 or 8080 are taken on your machine:
-`BACKEND_PORT=8010 FRONTEND_PORT=8081 docker compose up --build`.
+| Tier | Env var | Model | Used by | Why |
+|---|---|---|---|---|
+| Reasoning | `LLM_MODEL_REASONING` | `nvidia/Nemotron-3.5-Super-VL` | `gerente`, `sector_*` | A handful of calls a month, but they decide where the money goes |
+| Fast | `LLM_MODEL_FAST` | `nvidia/Nemotron-3_5-Lightning` | `teleoperador`, `operador`, `agenda`, `tecnicos`, `despacho` | Dozens of calls per simulated day; latency and cost dominate |
 
-### Option B — No Docker (development, Windows)
+Precedence is `LLM_MODEL_<AGENT>` → tier → `LLM_MODEL` (global fallback), so any
+single agent can be pinned to another endpoint without a code change.
 
-```powershell
-# Backend (uses the venv already created, without activating it)
-cd backend
-.venv\Scripts\pip install -r requirements.txt   # first time
-.venv\Scripts\python.exe -m uvicorn api:app --reload
+### Observability, on screen
 
-# Frontend (in another window)
-cd frontend
-npm install
-npm run dev
-```
+Because the router is only useful if you can see it working, `/api/metricas`
+aggregates calls, tokens, fallbacks and average latency **per model**, and the
+bottom strip of the UI shows both models and how many calls each one took. In a
+demo you can watch the volume go to Lightning while Super handles the monthly
+meeting.
 
-Or in one go: double-click **`scripts\dev.cmd`** (opens backend + frontend in two windows).
+### Safety nets (not a demo trick)
 
-With `USE_MOCK=true` the whole flow works without calling any real model.
-
-### Tests
-
-```powershell
-cd backend
-# 77 tests in total (engine, LLM, API, agent swarm, invoice auditor) — they run without network
-.venv\Scripts\python.exe -m pytest tests -q
-.venv\Scripts\python.exe tests\mirar_negocio.py # the 9-month dashboard
-
-cd ..\frontend
-npm run build     # compiles
-npm run smoke     # 46 checks: render + screen + ES/EN switch, against the real backend
-```
-
----
-
-## Publishing (Render + Netlify)
-
-- **Backend → Render:** the `render.yaml` file is a Blueprint. In
-  [app.onrender.com](https://app.onrender.com) → *New* → *Blueprint* → pick the repo.
-  Render builds the service on its own (Python, `uvicorn api:app`, health check on `/api/estado`).
-- **Frontend → Netlify:** in [app.netlify.com](https://app.netlify.com) → *Add new site* →
-  import the repo with *base directory* `frontend`. Netlify reads `frontend/netlify.toml`
-  (build `npm run build`, publishes `dist`, redirects `/api/*` to the Render backend).
-  **Edit the backend URL inside `netlify.toml`** (marked with ⬇).
-- Secrets (`LLM_API_KEY`, `LLM_MODEL`) are set in the Render panel. They are **never**
-  committed.
-
-## Environment variables
-
-See `.env.example`. Secrets are **never** committed.
+- **Structured output.** Every call is validated against a Pydantic schema, with
+  at most two retries.
+- **Explicit fallback.** If the provider fails or returns invalid JSON, the call
+  is served by a local deterministic writer and counted as a *fallback* in the
+  metrics. The demo never dies, and nothing is hidden: the strip shows the count.
+- **Cache.** Real responses are cached and can be replayed, so the demo is
+  reproducible and does not burn credits.
+- **Mock mode.** `USE_MOCK=true` runs the entire product with no network at all.
 
 ---
 
 ## Architecture
 
 ```
-Event engine (deterministic, NO LLM)
-  clock x120 · leads 180/day (they grow with database improvements)
-  150 calls/day · weekly scheduling (Mon–Sat, slots 9/12/16) · Monte Carlo
-  technician dispatch by algorithm (travel cost per neighborhood)
-  Manager validator + transparent safety net
-  everything persisted in SQLite (one database per language)
-        │
-        ├── Telemarketer   (LLM AMD)  qualifies, books and logs the reason for failure
-        ├── Scheduling coordinator    negotiates a slot by message and confirms to the client
-        ├── AI Manager                monthly meeting: metrics → decision → minutes
-        └── 4 SECTORS (month close)
-              program computes → AMD AI analyzes → local writer drafts
-              reports saved in SQLite (reportes_sector)
-        │
-  Owner's screen: CABA map + logo · simulation footer + agent room +
-  AMD strip always visible · ☰ menu with the 4 sectors
+frontend/ (React 18 + Vite)
+   │  plain fetch, auto-refresh
+   ▼
+backend/api.py (FastAPI)
+   │
+   ├── engine/          deterministic simulation
+   │     simulation · agenda · technicians · facturas · leads
+   │     calls · enjambre (swarm) · gerente · redactor · montecarlo
+   │
+   ├── llm/             single OpenAI-compatible client
+   │     config (router) · client · prompts · mock · cache · metrics
+   │
+   └── store.py         SQLite persistence (one database per language)
 ```
 
-**Actor rule:** the program computes the ~40,000 calls of the 9 months; the AI
-"acts" only in the ~20-30 calls and chats shown live. That way the demo is fast, cheap
-and deterministic — and the agents still really talk.
+The rule that keeps the demo honest: **the engine decides what is possible; the
+LLM decides what to do.** Agents never mutate state directly. Their output is
+parsed, validated, checked against business rules, and only then applied.
 
-### Agents and who decides
-
-| Character | Talks (AI) | Decides (program) |
-|---|---|---|
-| Telemarketer | ✅ qualifies and logs the reason | closing probability |
-| Scheduling coordinator | ✅ negotiates the slot | free slots and proximity |
-| Technician coordinator | explains | ✅ dispatch by algorithm |
-| Manager | ✅ analyzes and advises | ✅ validates cash, cap and capacity |
-
-### Simulated local rules
-
-- Every invoice carries **"SIMULATED – NO FISCAL VALIDITY"** (simulated ARCA seal).
-- The invoice **auditor** is rule-based (Monte Carlo + rule detection): the LLM is never the
-  only method of calculation.
-- **All** calls come from website leads asking to be called: there is no cold calling.
+Everything is **bilingual (Spanish / English)** — UI, agent output and invoices —
+with a separate SQLite database per language and `POST /api/idioma` to switch.
 
 ---
 
-## Repository structure
+## Run it locally
 
-```
-backend/
-  api.py            FastAPI: status, summaries, scenarios, map, AMD metrics, sectors, language
-  idioma.py         the site's language (English by default, Spanish on demand)
-  store.py          SQLite (clients, leads, calls, appointments, decisions, minutes, reports)
-  engine/           business · leads · calls · agenda · technicians · gerente · simulation
-                    sectores (reports of the 4 sectors) · redactor (local writer) · facturas (auditor)
-  llm/              client (OpenAI-compatible) · mock · cache · metrics
-  schemas/          structured responses of each agent (Pydantic)
-  tests/            77 tests + business inspector
-frontend/           React + Vite: CABA map + simulation footer + 4 sectors + ES/EN switch
-scripts/dev.cmd     starts backend + frontend in two windows
-docker-compose.yml  backend + frontend in a single command
-render.yaml         Render Blueprint
+### Option A — one command (Docker)
+
+```bash
+docker compose up --build
 ```
 
-## Project rules
+- Backend: <http://localhost:8000/api/estado>
+- Frontend: <http://localhost:8080>
 
-- **Structured outputs:** every agent returns JSON validated with Pydantic
-  (max. 2 retries + mock-mode fallback).
-- **A single LLM client** compatible with OpenAI (`base_url` configurable) → Radeon Cloud / Gemma on AMD GPU.
-- **Local writer** drafts the sector reports (no external service needed).
-- **Bilingual by design:** every user-facing string is a pair `t("English", "español")`
-  (`backend/idioma.py` + `frontend/src/i18n.js`); the ES/EN button flips interface,
-  reports, agent dialogues and invoices, with one database per language.
-- **Mock mode and cache/replay** to reproduce the demo without network.
-- **Per-call metrics** (latency p50/p95, tokens, tokens/s) shown in the AMD strip.
-- **Monte Carlo** and statistics for forecasting — the LLM is never the only calculation method.
+### Option B — two terminals
+
+Backend (Python 3.11+):
+
+```bash
+cd backend
+python -m venv .venv
+.venv\Scripts\activate          # Windows
+# source .venv/bin/activate     # macOS / Linux
+pip install -r requirements.txt
+python -m uvicorn api:app --reload --port 8000
+```
+
+Frontend (Node 18+):
+
+```bash
+cd frontend
+npm install
+npm run dev        # http://localhost:5173
+```
+
+On Windows PowerShell, `npm.cmd run dev` avoids the execution-policy problem.
+
+### Configuration
+
+Copy `.env.example` to `.env` and fill in the key. `.env` is git-ignored.
+
+| Variable | Purpose |
+|---|---|
+| `USE_MOCK` | `true` = no network, fully local. Default is `true`, so the app runs out of the box |
+| `LLM_BASE_URL` | Nebius Token Factory endpoint |
+| `LLM_API_KEY` | Your Token Factory API key (**never committed**) |
+| `LLM_MODEL_REASONING` | Reasoning-tier model |
+| `LLM_MODEL_FAST` | High-volume model |
+| `LLM_MODEL` | Optional global fallback |
+| `LLM_MAX_RETRIES` | Retries on invalid JSON (default 2) |
+| `LLM_TIMEOUT_S` | Request timeout in seconds |
+| `SIM_SEED` | Seed for reproducible simulations |
+
+To check a real connection before a demo:
+
+```bash
+cd backend
+.venv\Scripts\python.exe tests\probar_nebius.py
+```
+
+It lists the models your key can actually see and flags any configured ID that
+is not in that list.
+
+---
+
+## Tests
+
+```bash
+cd backend
+.venv\Scripts\python.exe -m pytest -q        # 85 passed
+```
+
+```bash
+cd frontend
+npm run build && npm run smoke               # renders the real UI against the backend
+```
+
+The smoke test boots the built bundle in jsdom against a running backend, opens
+every sector panel, runs a simulated day, and switches languages. It needs the
+backend on `localhost:8000` and a fresh `npm run build`; if the backend is down
+the app shows its "waking up" notice and the suite fails on purpose.
+
+---
+
+## What changed during the submission period
+
+This project existed before the hackathon (it was built for a previous event).
+Everything below was done inside the submission window:
+
+1. **Provider migration to Nebius Token Factory.** The LLM layer moved from a
+   single-model configuration to a provider-agnostic setup pointing at
+   `api.tokenfactory.nebius.com`.
+2. **Model router (new).** Per-agent model resolution with tiers and overrides,
+   plus 8 new tests covering the precedence rules.
+3. **Per-model observability (new).** `/api/metricas` now aggregates by model,
+   and the UI strip shows the routing live.
+4. **Full rebrand and documentation rewrite**, so the repository describes the
+   product that actually exists.
+5. **Deployment configuration** for the Nebius endpoint.
+
+The simulation engine, the API surface and the UI were already there; they were
+not rewritten — which is the point. The product was built to swap its brain.
+
+---
 
 ## License
 
-MIT. See `LICENSE`.
+MIT — see [LICENSE](LICENSE).
+
+The multi-agent development process used to build this project is documented in
+[`docs/EQUIPO.md`](docs/EQUIPO.md) and is not part of the product runtime.

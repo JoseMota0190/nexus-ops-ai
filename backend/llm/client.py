@@ -52,6 +52,10 @@ class LLMClient:
         self.replay = replay  # si True, solo sirve desde caché (demo sin red)
         self._rng = random.Random(42)  # determinismo en el modo mock
 
+    def _modelo(self, agent: str) -> str:
+        """Modelo resuelto para el agente ('' se interpreta como modo mock)."""
+        return self.config.model_for(agent) or "mock"
+
     # ------------------------------------------------------------------ API
     def complete(self, agent: str, messages: list[dict[str, str]],
                  schema: Type[T]) -> T:
@@ -62,7 +66,7 @@ class LLMClient:
         - La descripción de los campos del esquema (para que devuelva el
           JSON con la forma correcta).
 
-        Si el cerebro real (AMD) falla o devuelve basura, NO se rompe la demo:
+        Si el cerebro real (el proveedor real) falla o devuelve basura, NO se rompe la demo:
         se cae a la respuesta de respaldo y queda anotado en las métricas
         como `fallback_calls` (transparencia, no un truco).
         """
@@ -72,11 +76,11 @@ class LLMClient:
         except LLMError as e:
             if self.config.use_mock or self.replay:
                 raise  # en mock el error es real (bug), no lo tapamos
-            # La respuesta mala (venía de la caché o recién de AMD) se tira,
+            # La respuesta mala (venía de la caché o recién del proveedor) se tira,
             # para que la próxima consulta vuelva a ir al cerebro en vez de
             # repetir el mismo error en loop.
-            _cache.discard(agent, self.config.model or "mock", messages)
-            _log.warning("AMD no respondió (%s) -> respaldo local", e)
+            _cache.discard(agent, self._modelo(agent), messages)
+            _log.warning("Nebius Token Factory no respondió (%s) -> respaldo local", e)
             return self._validate(agent, self._complete_fallback(agent, messages), schema)
 
     def complete_json(self, agent: str, messages: list[dict[str, str]],
@@ -88,7 +92,7 @@ class LLMClient:
         except LLMError as e:
             if self.config.use_mock or self.replay:
                 raise
-            _log.warning("AMD no respondió (%s) -> respaldo local", e)
+            _log.warning("Nebius Token Factory no respondió (%s) -> respaldo local", e)
             return self._complete_fallback(agent, messages)
 
     def _preparar_prompt(self, messages: list[dict[str, str]],
@@ -110,11 +114,11 @@ class LLMClient:
 
     # ------------------------------------------------------------- interno
     def _raw_complete(self, agent: str, messages: list[dict[str, str]]) -> str:
-        model = self.config.model or "mock"
+        model = self._modelo(agent)
 
         # 1) Modo mock: NO toca la caché. La caché guarda respuestas del
         #    cerebro real para reproducir la demo sin red; si el mock la
-        #    leyera podía devolver basura que AMD dejó guardada de un run
+        #    leyera podía devolver basura que el proveedor real dejó guardada de un run
         #    anterior, y eso apagaba el arranque entero. Además el mock ya
         #    es determinista, así que la caché no le suma nada.
         if self.config.use_mock:
@@ -136,7 +140,7 @@ class LLMClient:
                            messages: list[dict[str, str]]) -> str:
         """Respuesta de respaldo cuando el cerebro real no respondió."""
         return self._complete_mock(agent, messages,
-                                   self.config.model or "mock", fallback=True)
+                                   self._modelo(agent), fallback=True)
 
     def _complete_mock(self, agent: str, messages: list[dict[str, str]],
                        model: str, fallback: bool = False) -> str:
@@ -163,7 +167,7 @@ class LLMClient:
         if not fallback and not self.config.use_mock:
             # No se cachea (a) una respuesta de respaldo ni (b) una simulada,
             # con el nombre del modelo real: las dos dejarían disfrazado de
-            # "real de AMD" a algo que no lo es. La caché sólo guarda
+            # "real del proveedor real" a algo que no lo es. La caché sólo guarda
             # respuestas que de verdad vino del cerebro.
             _cache.put(agent, model, messages, out)
         self._record(agent, model, dt, len(out) // 4, len(out) // 4,

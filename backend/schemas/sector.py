@@ -5,7 +5,7 @@ Cada sector de Nexus Alarm (gerencia, ventas, agenda, facturación) tiene un
 El PROGRAMA calcula los números (no el LLM, regla del concurso); la IA los
 interpreta y redacta los hallazgos.
 
-Si el cerebro real (AMD) no responde, el informe lo escribe el redactor LOCAL
+Si el cerebro real (real AI model) no responde, el informe lo escribe el redactor LOCAL
 (ver `engine/redactor.py`): la demo nunca se queda sin informe.
 """
 from __future__ import annotations

@@ -1,7 +1,8 @@
 """Métricas por llamada LLM: latencia y tokens.
 
 Se registran todas las llamadas (mock y reales) en un solo lugar, para exponerlas
-al panel de infraestructura AMD: tokens/s, latencia p50/p95, llamadas totales.
+al panel de observabilidad: tokens/s, latencia p50/p95, llamadas totales y
+modelo usado (el router de Nebius asigna un Nemotron distinto a cada agente).
 """
 from __future__ import annotations
 
@@ -44,6 +45,11 @@ class MetricsStore:
     def total_calls(self) -> int:
         with self._lock:
             return len(self._calls)
+
+    def records(self) -> list[CallRecord]:
+        """Copia de las llamadas registradas (para paneles y tests)."""
+        with self._lock:
+            return list(self._calls)
 
     def summary(self) -> dict[str, Any]:
         """Resumen para el panel. Percentiles de latencia y totales de tokens."""

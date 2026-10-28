@@ -1,7 +1,7 @@
 """Cliente LLM único para todo el proyecto.
 
 Un solo punto de entrada compatible con OpenAI (`base_url` configurable) que apunta
-a un modelo abierto servido sobre AMD (Radeon Cloud / instancia GPU con Gemma+vLLM).
+a un modelo open source servido sobre Nebius Token Factory / modelo Nemotron.
 De acá salen TODAS las llamadas a modelos, para que las métricas se capturen en un
 solo lugar.
 

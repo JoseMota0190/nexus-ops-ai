@@ -69,7 +69,7 @@ class Simulacion:
         # Interruptor "modo sala" (con charla) vs "modo rápido" (sin charla).
         self.modo_sala: bool = True
         self._sala_dia: list[dict] = []  # las charlas del día
-        # ¿Los informes de sector se generan con IA (AMD) o con el
+        # ¿Los informes de sector se generan con IA (real AI model) o con el
         # redactor local? El arranque (siembra) los hace locales, sin esperar.
         self.reportes_con_ia: bool = True
 

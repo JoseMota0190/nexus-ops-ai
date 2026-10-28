@@ -4,7 +4,7 @@ import { t, useIdioma } from "../i18n.js";
 
 /**
  * The panel of a SECTOR: it shows the report its agent produced when the month
- * closed (AMD analyzes the numbers, the local writer turns them into a
+ * closed (the model analyzes the numbers, the local writer turns them into a
  * document). It also shows the month's numbers, the history and — in Billing —
  * the simulated invoices with their audit.
  */
@@ -29,7 +29,7 @@ function Fuente({ informe }) {
   const ia = informe.fuente === "ia";
   const mock = informe.fuente === "mock";
   const cerebrito = ia
-    ? { texto: t("🧠 Analyzed by the AI (AMD)", "🧠 Analizado por la IA (AMD)"), clase: "etiqueta-verde" }
+    ? { texto: t("🧠 Analyzed by the AI (Nemotron)", "🧠 Analizado por la IA (Nemotron)"), clase: "etiqueta-verde" }
     : mock
       ? { texto: t("🧠 AI in test mode", "🧠 IA en modo prueba"), clase: "etiqueta-ambar" }
       : { texto: t("📝 Local writer", "📝 Redactor local"), clase: "etiqueta-azul" };

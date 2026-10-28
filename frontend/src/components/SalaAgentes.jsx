@@ -10,7 +10,8 @@ import { t, useIdioma } from "../i18n.js";
  * from valid options, they never invent a slot.
  *
  * Here you see the chat exactly as it was stored in the database (what the model
- * running on AMD really said). It is not a summary: it is the dialogue, sale by sale.
+ * running on Nebius Token Factory really said). It is not a summary: it is the
+ * dialogue, sale by sale.
  */
 
 function agentes() {

@@ -5,7 +5,7 @@ import { t, useIdioma } from "../i18n.js";
  *
  *   🧾 Management · 📞 Sales · 📅 Scheduling & technicians · 🧮 Billing
  *
- * Each one opens its monthly report (what the sector's agent produces: AMD
+ * Each one opens its monthly report (what the sector's agent produces: Nemotron
  * analyzes the numbers, the writer turns them into a document).
  */
 
@@ -92,8 +92,8 @@ export default function MenuLateral({
         </div>
 
         <div className="menu-pie">
-          {t("Nexus Alarm · fictional company · AMD ACT III / lablab.ai demo · simulated data.",
-             "Nexus Alarm · empresa ficticia · demo AMD ACT III / lablab.ai · datos simulados.")}
+          {t("Nexus Alarm · fictional company · Nebius Token Factory + NVIDIA Nemotron · simulated data.",
+             "Nexus Alarm · empresa ficticia · Nebius Token Factory + NVIDIA Nemotron · datos simulados.")}
         </div>
       </aside>
     </>

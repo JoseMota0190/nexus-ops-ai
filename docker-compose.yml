@@ -16,16 +16,18 @@ services:
       # Si el 8000 está ocupado en tu máquina: BACKEND_PORT=8010 docker compose up
       - "${BACKEND_PORT:-8000}:8000"
     environment:
-      # AMD de verdad: USE_MOCK=false en .env (ya está así) + LLM_API_KEY + LLM_MODEL.
+      # Nebius de verdad: USE_MOCK=false en .env (ya está así) + LLM_API_KEY + los modelos.
       # Si no hay .env, arranca en mock para que la demo corra sin gastar créditos.
       USE_MOCK: ${USE_MOCK:-true}
-      # AMD Radeon Cloud (endpoint compatible con OpenAI). Ya sirve Gemma:
-      # LLM_MODEL=Gemma-4-31B-IT (no hace falta instancia propia ni vLLM).
-      LLM_BASE_URL: ${LLM_BASE_URL:-https://developer.amd.com.cn/radeon/api/v1}
+      # Nebius Token Factory (endpoint compatible con OpenAI). El router manda el
+      # razonamiento a Nemotron 3.5 Super y el volumen diario a Nemotron 3.5 Lightning.
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.tokenfactory.nebius.com/v1}
       LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL_REASONING: ${LLM_MODEL_REASONING:-nvidia/Nemotron-3.5-Super-VL}
+      LLM_MODEL_FAST: ${LLM_MODEL_FAST:-nvidia/Nemotron-3_5-Lightning}
       LLM_MODEL: ${LLM_MODEL:-}
       LLM_MAX_RETRIES: ${LLM_MAX_RETRIES:-2}
-      LLM_TIMEOUT_S: ${LLM_TIMEOUT_S:-30}
+      LLM_TIMEOUT_S: ${LLM_TIMEOUT_S:-90}
       # La base vive en el volumen, no en la imagen
       NEXUS_DB: /app/data/nexus.db
     volumes:

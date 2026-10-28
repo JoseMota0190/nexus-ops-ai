@@ -10,12 +10,12 @@ Cada sector es una "oficina" del negocio con su propio agente:
 Cómo se arma un informe (acordado con el autor):
 
 1. El PROGRAMA junta los NÚMEROS del mes (regla del concurso: no depende del LLM).
-2. La IA (AMD) los ANALIZA en modo agéntico y saca los hallazgos.
+2. La IA los ANALIZA en modo agéntico y saca los hallazgos.
 3. El escritor LOCAL (`engine/redactor.py`) los REDACTA como documento. La demo
    nunca se queda sin informe y no depende de ningún servicio externo.
 
 Los 6 meses precargados se siembran con el redactor LOCAL (instantáneo, sin
-créditos). Los meses que corre el dueño en vivo usan la IA real (AMD).
+créditos). Los meses que corre el dueño en vivo usan la IA real.
 
 Todo el texto visible habla inglés y español (`engine/idioma.py`): los nombres de
 sector, las etiquetas de los números y el informe entero.
@@ -321,7 +321,7 @@ def generar_informe(store: Store, llm: LLMClient | None, sector: str, mes: int, 
     if usar_ia and llm is not None:
         base = informe_con_ia(llm, sector, mes, metricas)
         # Transparencia: si el cerebro está en modo prueba (mock), el informe NO
-        # puede decir que "analizó la IA de AMD". Se marca aparte.
+        # puede decir que "analizó la IA real". Se marca aparte.
         en_mock = bool(getattr(getattr(llm, "config", None), "use_mock", False))
         fuente = "mock" if en_mock else "ia"
     else:
@@ -362,7 +362,7 @@ def sembrar_informes(store: Store, hasta_mes: int, *, forzar: bool = False) -> i
     """Precarga los informes de los meses ya corridos con el redactor LOCAL.
 
     Es lo que hace que los 6 meses del arranque tengan informe al instante:
-    sin AMD, sin esperar. Devuelve cuántos informes escribió.
+    sin red, sin esperar. Devuelve cuántos informes escribió.
     """
     escritos = 0
     for mes in range(1, hasta_mes + 1):

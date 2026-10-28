@@ -110,7 +110,7 @@ const chequeos = [
   ["dibujo de CABA (48 barrios)", todos(".caba-barrio").length === 48],
   ["portada sin círculos (sin ruido)", todos(".mapa-portada circle").length === 0],
   ["sin la bandeja vieja apilada", !q("section.paneles")],
-  ["franja AMD siempre visible", !!q(".franja-amd")],
+  ["franja Nemotron siempre visible", !!q(".franja-nebius")],
   ["Sala de agentes en el pie", !!q(".sim-sala")],
   ["pie discreto del menú", true], // el pie vive dentro del menú lateral
 

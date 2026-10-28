@@ -2306,8 +2306,8 @@ tbody tr:hover {
   margin-bottom: 2px;
 }
 
-/* ------------------------------------------------------ franja AMD */
-.franja-amd {
+/* ------------------------------------------------- franja Nemotron */
+.franja-nebius {
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -2319,26 +2319,32 @@ tbody tr:hover {
   font-size: 12px;
   color: var(--texto-suave);
 }
-.franja-amd-tag {
+.franja-nebius-tag {
   font-family: var(--fuente-titulos);
   font-weight: 800;
   letter-spacing: 0.6px;
   color: var(--texto);
 }
-.franja-amd-punto {
+.franja-nebius-punto {
   width: 8px;
   height: 8px;
   border-radius: 50%;
   background: var(--rojo);
   box-shadow: 0 0 10px currentColor;
 }
-.franja-amd-punto.on {
+.franja-nebius-punto.on {
   background: var(--verde);
 }
-.franja-amd-item b {
+.franja-nebius-item b {
   color: var(--texto);
 }
-.franja-amd-sep {
+/* Cuántas llamadas hizo cada modelo del router. */
+.franja-nebius-item em {
+  font-style: normal;
+  margin-left: 4px;
+  opacity: 0.7;
+}
+.franja-nebius-sep {
   width: 1px;
   height: 14px;
   background: var(--borde);
