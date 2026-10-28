@@ -12,7 +12,7 @@
 ## Cómo grabarlo (pasos, en criollo)
 
 1. **Slides:** 3 slides nada más (al principio, al final, y una con la tabla de números).
-   Texto grande, fondo oscuro, logo AMD visible en la última.
+   Texto grande, fondo oscuro, logos de **Nebius Token Factory** y **NVIDIA** visibles en la última.
 2. **Pantalla:** grabar la app corriendo de verdad (mes 1 → correr los días → mes 9) con el mouse
    moviéndose lento. Se puede grabar con Win+G (Xbox Game Bar) o con OBS.
 3. **Voz:** primero intentá con la voz clonada. Si no, leelo vos con calma — no hace falta
@@ -33,7 +33,7 @@
 | 3 | 0:26 – 0:56 | Pantalla: el enjambre de agentes (llamada + agenda) |
 | 4 | 0:56 – 1:30 | Pantalla: el Gerente IA y su red de seguridad |
 | 5 | 1:30 – 2:05 | Slide/tabla: los números de los 9 meses |
-| 6 | 2:05 – 2:28 | Pantalla: franja AMD + los 4 sectores (informes) |
+| 6 | 2:05 - 2:30 | Pantalla: franja Nemotron + el router de modelos |
 | 7 | 2:28 – 2:50 | Slide de cierre |
 
 ---
@@ -162,33 +162,33 @@ el aviso de la red de seguridad, **señalarlo con el mouse** (es una virtud, no 
 
 ---
 
-## ESCENA 6 — AMD + los 4 sectores (2:05 – 2:28)
+## ESCENA 6 — Nebius + el router Nemotron (2:05 – 2:30)
 
-**Pantalla:** la **franja AMD** abajo (siempre visible: modelo, p50/p95, tokens/s, respaldos)
-y un **informe de sector** abierto, con las etiquetas `🧠 Analyzed by the AI (AMD)` y
-`✍️ Written locally`.
+**Pantalla:** la **franja Nemotron** abajo (siempre visible: los dos modelos y cuántas llamadas
+hizo cada uno, p50/p95, tokens/s, respaldos) y un **informe de sector** abierto, con las etiquetas
+`🧠 Analyzed by the AI (Nemotron)` y `✍️ Written locally`.
 
 **Voz:**
-> The brain runs on an open model served on AMD infrastructure.
-> A strip at the bottom shows every call measured — latency, tokens per second, fallbacks — live.
-> And the whole business reports to four sectors: management, sales, scheduling and billing.
-> Each month the program computes the numbers, AMD's model analyzes them,
-> and the report is written into a document — with a local writer as a safety net.
-> And the forecast itself is Monte Carlo, not the language model:
-> the model talks, the math decides.
+> The brain is two NVIDIA Nemotron models on Nebius Token Factory.
+> A router sends the monthly decision to Super,
+> and the hundred and fifty daily calls to the fast one, Lightning.
+> The strip at the bottom proves it live: calls per model, latency, tokens, fallbacks.
+> The four sector reports use the same trick — Nemotron analyzes, a local writer formats,
+> and the forecast is Monte Carlo, not the language model.
+> The model talks, the math decides.
 
 **Subtítulos:**
-1. `The brain runs on an open model served on AMD.`
-2. `A strip at the bottom shows every call measured —`
-3. `latency, tokens per second, fallbacks — live.`
-4. `And the whole business reports to four sectors:`
-5. `management, sales, scheduling and billing.`
-6. `Each month the program computes the numbers,`
-7. `AMD's model analyzes them, and the report is written —`
-8. `with a local writer as a safety net.`
-9. `And the forecast itself is Monte Carlo,`
-10. `not the language model:`
-11. `the model talks, the math decides.`
+1. `The brain is two NVIDIA Nemotron models`
+2. `on Nebius Token Factory.`
+3. `A router sends the monthly decision to Super,`
+4. `and 150 daily calls to the fast one, Lightning.`
+5. `The strip at the bottom proves it live:`
+6. `calls per model, latency, tokens, fallbacks.`
+7. `The four sector reports use the same trick —`
+8. `Nemotron analyzes, a local writer formats,`
+9. `and the forecast is Monte Carlo,`
+10. `not the language model.`
+11. `The model talks, the math decides.`
 
 ---
 
@@ -197,7 +197,7 @@ y un **informe de sector** abierto, con las etiquetas `🧠 Analyzed by the AI (
 **Pantalla:** slide final. Título: **"From data to action."**
 Debajo, en orden y con animación de entrada:
 `data → recommendation → decision → action`
-y abajo: *Open source · Containerized · Live* + logo AMD.
+y abajo: *Open source · Containerized · Live* + logos de **Nebius Token Factory** y **NVIDIA**.
 
 **Voz:**
 > Nexus Alarm is a working product, not a slide deck: containerized,
@@ -218,35 +218,41 @@ y abajo: *Open source · Containerized · Live* + logo AMD.
 
 ---
 
-## Datos de la inscripción (para copiar/pegar en lablab.ai)
+## Datos de la inscripción (para copiar/pegar en Devpost)
 
-**Project title:** `nexus-ops-ai — the digital twin of Nexus Alarm`
+**Project title:** `Nexus Alarm — the digital twin of a security-alarm company`
+
+**Track:** *Best Apps and Agents*
 
 **Short description (≈2 líneas):**
-> A swarm of AI agents runs the full sales operation of a small alarm-installing
+> A swarm of AI agents runs the full operation of a small alarm-installing
 > company in Buenos Aires — calls, scheduling, dispatch and monthly management —
-> on an open model served on AMD, with Monte Carlo forecasting.
+> on NVIDIA Nemotron models served through Nebius Token Factory, with a router
+> that puts reasoning where it pays and speed everywhere else.
 
 **Long description (para el formulario):**
-> nexus-ops-ai is a digital twin of "Nexus Alarm", a fictional security-alarm
-> installer in Buenos Aires. It simulates nine months of operations: 150 inbound
-> calls a day, weekly scheduling Monday–Saturday, technician dispatch
-> computed by a zone/travel-cost algorithm, and a monthly AI manager that decides
-> how to grow from 2 to 10 technicians without running out of cash.
+> Nexus Alarm is a digital twin of a fictional security-alarm installer in Buenos
+> Aires. It simulates nine months of operations: 150 inbound calls a day, weekly
+> scheduling Monday–Saturday, technician dispatch computed by a zone/travel-cost
+> algorithm, and a monthly AI manager that decides how to grow from 2 to 10
+> technicians without running out of cash.
 >
-> The LLM (open model on AMD infrastructure) speaks and explains; the program
-> computes and validates. Forecasting uses Monte Carlo simulation, never the LLM
-> alone. Rejection reasons from every call are logged and fed back to the
-> manager's monthly review. The business reports to four sectors — management,
-> sales, scheduling and billing — and every month the numbers are computed, the
-> model analyzes them, and the report is written (with a local writer as
-> fallback). That is how customer data becomes a recommendation and a
-> recommendation becomes an action.
+> Every agent call goes through Nebius Token Factory. A router picks the model
+> per agent: the monthly management decision runs on Nemotron 3.5 Super, while
+> the ~150 daily calls run on Nemotron 3.5 Lightning. The bottom strip of the UI
+> shows both models and their real latency, tokens and fallback rate, so the cost
+> strategy is visible instead of claimed.
 >
-> Deliverables: public GitHub repo, containerized app (Docker), live web demo,
-> README that runs, presentation video and slides.
+> The architecture rule is that the LLM speaks and the program decides: every
+> agent output is validated against a Pydantic schema, checked against business
+> rules, and only then applied. Forecasting is Monte Carlo, never the model
+> alone. If the provider fails, a deterministic local writer takes over and the
+> fallback is counted on screen — the demo never dies and nothing is hidden.
+>
+> The business reports to four sectors — management, sales, scheduling and
+> billing — and every month the numbers are computed, a Nemotron model analyzes
+> them, and the report is written. That is how customer data becomes a
+> recommendation, and a recommendation becomes an action.
 
-**Tags sugeridos:** `ai-agents`, `llm`, `amd`, `digital-twin`,
+**Tags sugeridos:** `ai-agents`, `llm`, `nemotron`, `nebius`, `digital-twin`,
 `commerce`, `monte-carlo`, `agents`, `fastapi`, `react`
-
-**Categoría:** Reinvent Commerce

@@ -76,7 +76,7 @@
 
 ## Estado de Git y riesgos conocidos
 
-- Archivos de la configuración multiagente (`.opencode/`, `opencode.json`, `MODEL_SELECTION.md`, `PLAN.md`, `TASKS.md`, `DECISIONS.md`) **no están commiteados** al 2026-10-27. Riesgo de pérdida; se sugiere commit cuando el usuario lo autorice.
-- `README.md` sigue siendo el de la plantilla multiagente, no el del producto: no sirve como README de entrega del hackathon.
+- Archivos de la configuración multiagente (`.opencode/`, `opencode.json`, `MODEL_SELECTION.md`, `PLAN.md`, `TASKS.md`, `DECISIONS.md`) **ya están commiteados** (commit local `9911921`, 2026-10-27). El push al repositorio público sigue pendiente (T-015).
+- `README.md` ya es el del producto: problema, arquitectura, uso de Nebius + Nemotron, setup, tests y «What changed during the submission period». La doc del equipo multiagente vive en `docs/EQUIPO.md`.
 - `docs/PROMPT_INICIO_PROYECTO.md` y `docs/MODELOS.md` describen la plantilla; no contradicen al producto pero deben leerse como documentación de proceso, no del sistema.
-- `.env.example` apunta a AMD Radeon Cloud; es el proveedor del hackathon anterior. La adaptación a Nebius está pendiente.
+- `.env.example` ya apunta a **Nebius Token Factory** con el router Nemotron (`LLM_MODEL_REASONING` / `LLM_MODEL_FAST`). Migración hecha en T-003 (2026-10-27); falta la verificación con una API key real (T-013).
